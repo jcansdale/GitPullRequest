@@ -11,9 +11,18 @@ namespace GitPullRequest.Services
     {
         const string RemoteOrigin = "origin";
 
-        public IList<int> FindPullRequests(IRepository repo)
+        public GitHubRepository GetGitHubRepository(IRepository repo)
         {
-            var references = GetReferences(repo, RemoteOrigin);
+            return new GitHubRepository
+            {
+                References = GetReferences(repo, RemoteOrigin),
+                Url = GetRepositoryUrl(repo)
+            };
+        }
+
+        public IList<int> FindPullRequests(GitHubRepository gitHubRepository, IRepository repo)
+        {
+            var references = gitHubRepository.References;
 
             var branch = repo.Head;
             if (!branch.IsTracking || !references.TryGetValue(branch.UpstreamBranchCanonicalName, out string sha))
@@ -24,22 +33,31 @@ namespace GitPullRequest.Services
             return FindPullRequestsForSha(references, sha).ToList();
         }
 
-        public string GetPullRequestUrl(IRepository repo, int number)
+        public string GetPullRequestUrl(GitHubRepository gitHubRepository, int number)
         {
-            var repositoryUrl = GetRepositoryUrl(repo);
-            return $"{repositoryUrl}/pull/{number}";
+            return $"{gitHubRepository.Url}/pull/{number}";
         }
 
-        public string GetCompareUrl(IRepository repo)
+        public string FindCompareUrl(GitHubRepository gitHubRepository, IRepository repo)
         {
-            var friendlyName = GetUpstreamBranchFriendlyName(repo.Head);
-            var repositoryUrl = GetRepositoryUrl(repo);
-            return $"{repositoryUrl}/compare/{friendlyName}";
+            var branch = repo.Head;
+            if (!branch.IsTracking)
+            {
+                return null;
+            }
+
+            var upstreamBranchCanonicalName = branch.UpstreamBranchCanonicalName;
+            if (!gitHubRepository.References.ContainsKey(upstreamBranchCanonicalName))
+            {
+                return null;
+            }
+
+            var friendlyName = GetFriendlyName(upstreamBranchCanonicalName);
+            return $"{gitHubRepository.Url}/compare/{friendlyName}";
         }
 
-        static string GetUpstreamBranchFriendlyName(Branch branch)
+        static string GetFriendlyName(string canonicalName)
         {
-            var canonicalName = branch.UpstreamBranchCanonicalName;
             var prefix = "refs/heads/";
             if (!canonicalName.StartsWith(prefix))
             {
@@ -69,7 +87,7 @@ namespace GitPullRequest.Services
             return null;
         }
 
-        static object GetRepositoryUrl(IRepository repo)
+        static string GetRepositoryUrl(IRepository repo)
         {
             var url = repo.Network.Remotes[RemoteOrigin].Url;
             var postfix = ".git";
