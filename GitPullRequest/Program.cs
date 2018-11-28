@@ -21,19 +21,28 @@ namespace GitPullRequest
             using (var repo = new Repository(repoPath))
             {
                 var service = new GitPullRequestService();
-                var prs = service.FindPullRequests(repo);
+                var gitHubRepository = service.GetGitHubRepository(repo);
+                var prs = service.FindPullRequests(gitHubRepository, repo);
 
-                if (prs.Count == 0)
+                if (prs.Count > 0)
                 {
-                    Console.WriteLine("Couldn't find pull request for this branch");
+                    foreach (var pr in prs)
+                    {
+                        var prUrl = service.GetPullRequestUrl(gitHubRepository, pr);
+                        Browse(prUrl);
+                    }
+
                     return;
                 }
 
-                foreach (var pr in prs)
+                var compareUrl = service.FindCompareUrl(gitHubRepository, repo);
+                if (compareUrl != null)
                 {
-                    var prUrl = service.GetPullRequestUrl(repo, pr);
-                    Browse(prUrl);
+                    Browse(compareUrl);
+                    return;
                 }
+
+                Console.WriteLine("Couldn't find pull request or remote branch");
             }
         }
 
