@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "GitPullRequest": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Source\\github.com\\jcansdale\\TestDriven.Net\""
+    }
+  }
+}

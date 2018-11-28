@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>git-pr</ToolCommandName>
+    <PackageOutputPath>./nupkg</PackageOutputPath>
+
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+    <Version>1.0.1</Version>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibGit2Sharp" Version="0.26.0-preview-0062" />
+    <PackageReference Include="Microsoft.Alm.Authentication" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GitPullRequest.Services\GitPullRequest.Services.csproj" />
+  </ItemGroup>
+
+</Project>
