@@ -30,7 +30,17 @@ namespace GitPullRequest.Services
                 sha = branch.Tip.Sha;
             }
 
-            return FindPullRequestsForSha(references, sha).ToList();
+            return FindPullRequestsForSha(gitHubRepository, sha);
+        }
+
+        public IList<int> FindPullRequestsForSha(GitHubRepository gitHubRepository, string sha)
+        {
+            return gitHubRepository.References
+                .Where(kv => kv.Value == sha)
+                .Select(kv => FindPullRequestForCanonicalName(kv.Key))
+                .Where(pr => pr != null)
+                .Cast<int>()
+                .ToList();
         }
 
         public string GetPullRequestUrl(GitHubRepository gitHubRepository, int number)
@@ -65,15 +75,6 @@ namespace GitPullRequest.Services
             }
 
             return canonicalName.Substring(prefix.Length);
-        }
-
-        static IEnumerable<int> FindPullRequestsForSha(IDictionary<string, string> refs, string sha)
-        {
-            return refs
-                .Where(kv => kv.Value == sha)
-                .Select(kv => FindPullRequestForCanonicalName(kv.Key))
-                .Where(pr => pr != null)
-                .Cast<int>();
         }
 
         static int? FindPullRequestForCanonicalName(string canonicalName)
