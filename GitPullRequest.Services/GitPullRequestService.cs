@@ -9,37 +9,56 @@ namespace GitPullRequest.Services
 {
     public class GitPullRequestService
     {
-        const string RemoteOrigin = "origin";
+        public IDictionary<string, GitHubRepository> GetGitHubRepositories(IRepository repo)
+        {
+            var gitHubRepositories = new Dictionary<string, GitHubRepository>();
+            foreach (var remote in repo.Network.Remotes)
+            {
+                var remoteName = remote.Name;
+                gitHubRepositories[remoteName] = GetGitHubRepository(repo, remoteName);
+            }
 
-        public GitHubRepository GetGitHubRepository(IRepository repo)
+            return gitHubRepositories;
+        }
+
+        public GitHubRepository GetGitHubRepository(IRepository repo, string remoteName)
         {
             return new GitHubRepository
             {
-                References = GetReferences(repo, RemoteOrigin),
-                Url = GetRepositoryUrl(repo)
+                References = GetReferences(repo, remoteName),
+                Url = GetRepositoryUrl(repo, remoteName)
             };
         }
 
-        public IList<int> FindPullRequests(GitHubRepository gitHubRepository, IRepository repo)
+        public IList<(GitHubRepository Repository, int Number)> FindPullRequests(
+            IDictionary<string, GitHubRepository> gitHubRepositories, IRepository repo)
         {
-            var references = gitHubRepository.References;
-
             var branch = repo.Head;
-            if (!branch.IsTracking || !references.TryGetValue(branch.UpstreamBranchCanonicalName, out string sha))
+
+            string sha = null;
+            if (branch.IsTracking)
+            {
+                var gitHubRepository = gitHubRepositories[branch.RemoteName];
+                var references = gitHubRepository.References;
+                references.TryGetValue(branch.UpstreamBranchCanonicalName, out sha);
+            }
+
+            if (sha == null)
             {
                 sha = branch.Tip.Sha;
             }
 
-            return FindPullRequestsForSha(gitHubRepository, sha);
+            return FindPullRequestsForSha(gitHubRepositories, sha);
         }
 
-        public IList<int> FindPullRequestsForSha(GitHubRepository gitHubRepository, string sha)
+        public IList<(GitHubRepository Repository, int Number)> FindPullRequestsForSha(
+            IDictionary<string, GitHubRepository> gitHubRepositories, string sha)
         {
-            return gitHubRepository.References
-                .Where(kv => kv.Value == sha)
-                .Select(kv => FindPullRequestForCanonicalName(kv.Key))
-                .Where(pr => pr != null)
-                .Cast<int>()
+            return gitHubRepositories
+                .SelectMany(r => r.Value.References, (x, y) => (Repository: x.Value, Reference: y))
+                .Where(kv => kv.Reference.Value == sha)
+                .Select(kv => (kv.Repository, Number: FindPullRequestForCanonicalName(kv.Reference.Key)))
+                .Where(pr => pr.Number != -1)
                 .ToList();
         }
 
@@ -48,7 +67,7 @@ namespace GitPullRequest.Services
             return $"{gitHubRepository.Url}/pull/{number}";
         }
 
-        public string FindCompareUrl(GitHubRepository gitHubRepository, IRepository repo)
+        public string FindCompareUrl(IDictionary<string, GitHubRepository> gitHubRepositories, IRepository repo)
         {
             var branch = repo.Head;
             if (!branch.IsTracking)
@@ -57,6 +76,7 @@ namespace GitPullRequest.Services
             }
 
             var upstreamBranchCanonicalName = branch.UpstreamBranchCanonicalName;
+            var gitHubRepository = gitHubRepositories[branch.RemoteName];
             if (!gitHubRepository.References.ContainsKey(upstreamBranchCanonicalName))
             {
                 return null;
@@ -77,7 +97,7 @@ namespace GitPullRequest.Services
             return canonicalName.Substring(prefix.Length);
         }
 
-        static int? FindPullRequestForCanonicalName(string canonicalName)
+        static int FindPullRequestForCanonicalName(string canonicalName)
         {
             var match = Regex.Match(canonicalName, "^refs/pull/([0-9]+)/head$");
             if (match.Success && int.TryParse(match.Groups[1].Value, out int number))
@@ -85,12 +105,12 @@ namespace GitPullRequest.Services
                 return number;
             }
 
-            return null;
+            return -1;
         }
 
-        static string GetRepositoryUrl(IRepository repo)
+        static string GetRepositoryUrl(IRepository repo, string remoteName)
         {
-            var url = repo.Network.Remotes[RemoteOrigin].Url;
+            var url = repo.Network.Remotes[remoteName].Url;
             var postfix = ".git";
             if (url.EndsWith(postfix))
             {
@@ -114,8 +134,8 @@ namespace GitPullRequest.Services
                 };
 
             var dictionary = new Dictionary<string, string>();
-            var origin = repo.Network.Remotes[remoteName];
-            var refs = repo.Network.ListReferences(origin, credentialsHandler);
+            var remote = repo.Network.Remotes[remoteName];
+            var refs = repo.Network.ListReferences(remote, credentialsHandler);
             foreach (var reference in refs)
             {
                 dictionary[reference.CanonicalName] = reference.TargetIdentifier;
