@@ -25,16 +25,15 @@ namespace GitPullRequest.Services
         {
             return new GitHubRepository
             {
-                References = GetReferences(repo, remoteName),
-                Url = GetRepositoryUrl(repo, remoteName)
+                RemoteName = remoteName,
+                Url = GetRepositoryUrl(repo, remoteName),
+                References = GetReferences(repo, remoteName)
             };
         }
 
         public IList<(GitHubRepository Repository, int Number)> FindPullRequests(
-            IDictionary<string, GitHubRepository> gitHubRepositories, IRepository repo)
+            IDictionary<string, GitHubRepository> gitHubRepositories, Branch branch)
         {
-            var branch = repo.Head;
-
             string sha = null;
             if (branch.IsTracking)
             {
