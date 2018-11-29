@@ -54,7 +54,7 @@ public class GitPullRequestServiceTests
             var target = new GitPullRequestService();
             var gitHubRepositories = target.GetGitHubRepositories(repo);
 
-            var prs = target.FindPullRequests(gitHubRepositories, repo);
+            var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
 
             Assert.That(prs, Is.Empty);
         }
@@ -73,7 +73,7 @@ public class GitPullRequestServiceTests
             var target = new GitPullRequestService();
             var gitHubRepositories = target.GetGitHubRepositories(repo);
 
-            var prs = target.FindPullRequests(gitHubRepositories, repo);
+            var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
 
             Assert.That(prs.FirstOrDefault().Number, Is.EqualTo(number));
         }

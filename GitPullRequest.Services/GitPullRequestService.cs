@@ -31,10 +31,8 @@ namespace GitPullRequest.Services
         }
 
         public IList<(GitHubRepository Repository, int Number)> FindPullRequests(
-            IDictionary<string, GitHubRepository> gitHubRepositories, IRepository repo)
+            IDictionary<string, GitHubRepository> gitHubRepositories, Branch branch)
         {
-            var branch = repo.Head;
-
             string sha = null;
             if (branch.IsTracking)
             {
