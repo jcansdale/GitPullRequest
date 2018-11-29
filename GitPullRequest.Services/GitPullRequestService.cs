@@ -25,8 +25,9 @@ namespace GitPullRequest.Services
         {
             return new GitHubRepository
             {
-                References = GetReferences(repo, remoteName),
-                Url = GetRepositoryUrl(repo, remoteName)
+                RemoteName = remoteName,
+                Url = GetRepositoryUrl(repo, remoteName),
+                References = GetReferences(repo, remoteName)
             };
         }
 

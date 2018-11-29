@@ -50,7 +50,7 @@ public class GitPullRequestServiceTests
     public class TheFindPullRequestsMethod
     {
         [Test]
-        public void NoPrs()
+        public void No_Pull_Request()
         {
             var repo = CreateRepository("sha", null, null, Array.Empty<Remote>());
             var target = new GitPullRequestService();
@@ -63,10 +63,12 @@ public class GitPullRequestServiceTests
 
         [TestCase("headSha", "prSha")]
         [TestCase("sameHeadAndPrSha", "sameHeadAndPrSha")]
-        public void LivePr(string headSha, string prSha)
+        public void Live_Pull_Request(string headSha, string prSha)
         {
             var number = 777;
-            var remote = CreateRemote("origin", "https://github.com/owner/repo");
+            var remoteName = "origin";
+            var remoteUrl = "https://github.com/owner/repo";
+            var remote = CreateRemote(remoteName, remoteUrl);
             var repo = CreateRepository(headSha, "origin", "refs/heads/one", new[] { remote });
             AddRemoteReferences(repo, remote, new Dictionary<string, string>
                 {
@@ -78,7 +80,10 @@ public class GitPullRequestServiceTests
 
             var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
 
-            Assert.That(prs.FirstOrDefault().Number, Is.EqualTo(number));
+            var pr = prs.FirstOrDefault();
+            Assert.That(pr.Repository.RemoteName, Is.EqualTo(remoteName));
+            Assert.That(pr.Repository.Url, Is.EqualTo(remoteUrl));
+            Assert.That(pr.Number, Is.EqualTo(number));
         }
 
         [Test]
@@ -86,10 +91,11 @@ public class GitPullRequestServiceTests
         {
             var number = 777;
             var originUrl = "https://github.com/origin/repo";
+            var upstreamRemoteName = "upstream";
             var upstreamUrl = "https://github.com/upstream/repo";
             var prSha = "prSha";
             var originRemote = CreateRemote("origin", originUrl);
-            var upstreamRemote = CreateRemote("upstream", upstreamUrl);
+            var upstreamRemote = CreateRemote(upstreamRemoteName, upstreamUrl);
             var repo = CreateRepository(prSha, "origin", "refs/heads/one", new[] { originRemote, upstreamRemote });
             AddRemoteReferences(repo, originRemote, new Dictionary<string, string> { { "refs/heads/one", prSha } });
             AddRemoteReferences(repo, upstreamRemote, new Dictionary<string, string> { { $"refs/pull/{number}/head", prSha } });
@@ -100,6 +106,7 @@ public class GitPullRequestServiceTests
 
             var pr = prs.FirstOrDefault();
             Assert.That(pr.Repository.Url, Is.EqualTo(upstreamUrl));
+            Assert.That(pr.Repository.RemoteName, Is.EqualTo(upstreamRemoteName));
             Assert.That(pr.Number, Is.EqualTo(number));
         }
     }
@@ -116,11 +123,11 @@ public class GitPullRequestServiceTests
         return repo;
     }
 
-    private static Remote CreateRemote(string remoteName, string originUrl)
+    private static Remote CreateRemote(string name, string url)
     {
         var remote = Substitute.For<Remote>();
-        remote.Name.Returns(remoteName);
-        remote.Url.Returns(originUrl);
+        remote.Name.Returns(name);
+        remote.Url.Returns(url);
         return remote;
     }
 

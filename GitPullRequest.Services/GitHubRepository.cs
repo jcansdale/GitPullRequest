@@ -4,7 +4,8 @@ namespace GitPullRequest.Services
 {
     public class GitHubRepository
     {
-        public IDictionary<string, string> References { get; set; }
+        public string RemoteName { get; set; }
         public string Url { get; set; }
+        public IDictionary<string, string> References { get; set; }
     }
 }
