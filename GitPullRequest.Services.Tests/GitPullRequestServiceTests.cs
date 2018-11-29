@@ -11,17 +11,19 @@ public class GitPullRequestServiceTests
 {
     public class TheFindCompareUrlMethod
     {
-        [TestCase("https://github.com/owner/repo", "origin", "refs/heads/branchName", "refs/heads/branchName", "https://github.com/owner/repo/compare/branchName")]
-        [TestCase("https://github.com/owner/repo", "origin", "refs/heads/deleted", "refs/heads/branchName", null)]
-        [TestCase("https://github.com/owner/repo", null, null, "refs/heads/branchName", null, Description = "No tracking branch")]
-        public void FindCompareUrl(string originUrl, string originName, string upstreamBranchCanonicalName, string referenceCanonicalName,
+        [TestCase("origin", "https://github.com/owner/repo", "refs/heads/branchName", "refs/heads/branchName", "https://github.com/owner/repo/compare/branchName")]
+        [TestCase("origin", "https://github.com/owner/repo", "refs/heads/deleted", "refs/heads/branchName", null)]
+        [TestCase(null, null, null, "refs/heads/branchName", null, Description = "No tracking branch")]
+        public void FindCompareUrl(string remoteName, string remoteUrl, string upstreamBranchCanonicalName, string referenceCanonicalName,
             string expectUrl)
         {
-            var repo = CreateRepository(originUrl,
-                "headSha", originName, upstreamBranchCanonicalName, new Dictionary<string, string>
-                {
-                    { referenceCanonicalName, "refSha" }
-                });
+            var remote = remoteName != null ? CreateRemote(remoteName, remoteUrl) : null;
+            var remotes = remoteName != null ? new[] { remote } : Array.Empty<Remote>();
+            var repo = CreateRepository("headSha", remoteName, upstreamBranchCanonicalName, remotes);
+            if (remote != null)
+            {
+                AddRemoteReferences(repo, remote, new Dictionary<string, string> { { referenceCanonicalName, "refSha" } });
+            }
             var target = new GitPullRequestService();
             var gitHubRepositories = target.GetGitHubRepositories(repo);
 
@@ -50,7 +52,7 @@ public class GitPullRequestServiceTests
         [Test]
         public void NoPrs()
         {
-            var repo = CreateRepository("https://github.com/owner/repo", "sha", null, null, new Dictionary<string, string> { });
+            var repo = CreateRepository("sha", null, null, Array.Empty<Remote>());
             var target = new GitPullRequestService();
             var gitHubRepositories = target.GetGitHubRepositories(repo);
 
@@ -64,8 +66,9 @@ public class GitPullRequestServiceTests
         public void LivePr(string headSha, string prSha)
         {
             var number = 777;
-            var repo = CreateRepository("https://github.com/owner/repo",
-                headSha, "origin", "refs/heads/one", new Dictionary<string, string>
+            var remote = CreateRemote("origin", "https://github.com/owner/repo");
+            var repo = CreateRepository(headSha, "origin", "refs/heads/one", new[] { remote });
+            AddRemoteReferences(repo, remote, new Dictionary<string, string>
                 {
                     { "refs/heads/one", prSha },
                     { $"refs/pull/{number}/head", prSha }
@@ -80,18 +83,12 @@ public class GitPullRequestServiceTests
     }
 
     static IRepository CreateRepository(
-        string originUrl,
         string headSha, string remoteName, string upstreamBranchCanonicalName,
-        IDictionary<string, string> refs)
+        IList<Remote> remoteList)
     {
         var repo = Substitute.For<IRepository>();
-        var remoteList = remoteName != null ? new Remote[] { CreateRemote(remoteName, originUrl) } : Array.Empty<Remote>();
         var network = CreateNetwork(remoteList);
         repo.Network.Returns(network);
-        if (remoteName != null)
-        {
-            AddReferences(repo, remoteList[0], refs);
-        }
         var branch = CreateBranch(headSha, remoteName, upstreamBranchCanonicalName);
         repo.Head.Returns(branch);
         return repo;
@@ -126,7 +123,7 @@ public class GitPullRequestServiceTests
         return network;
     }
 
-    static void AddReferences(IRepository repository, Remote remote, IDictionary<string, string> refs)
+    static void AddRemoteReferences(IRepository repository, Remote remote, IDictionary<string, string> refs)
     {
         var references = refs.Select(r =>
         {
