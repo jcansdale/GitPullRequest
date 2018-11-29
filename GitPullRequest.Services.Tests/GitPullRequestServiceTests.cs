@@ -18,9 +18,9 @@ public class GitPullRequestServiceTests
             string expectUrl)
         {
             var repo = CreateRepository(originUrl,
-                "headSha", originName, upstreamBranchCanonicalName, new[]
+                "headSha", originName, upstreamBranchCanonicalName, new Dictionary<string, string>
                 {
-                    (referenceCanonicalName, "refSha")
+                    { referenceCanonicalName, "refSha" }
                 });
             var target = new GitPullRequestService();
             var gitHubRepositories = target.GetGitHubRepositories(repo);
@@ -50,7 +50,7 @@ public class GitPullRequestServiceTests
         [Test]
         public void NoPrs()
         {
-            var repo = CreateRepository("https://github.com/owner/repo", "sha", null, null, new (string, string)[0]);
+            var repo = CreateRepository("https://github.com/owner/repo", "sha", null, null, new Dictionary<string, string> { });
             var target = new GitPullRequestService();
             var gitHubRepositories = target.GetGitHubRepositories(repo);
 
@@ -65,10 +65,10 @@ public class GitPullRequestServiceTests
         {
             var number = 777;
             var repo = CreateRepository("https://github.com/owner/repo",
-                headSha, "origin", "refs/heads/one", new[]
+                headSha, "origin", "refs/heads/one", new Dictionary<string, string>
                 {
-                    ("refs/heads/one", prSha),
-                    ($"refs/pull/{number}/head", prSha)
+                    { "refs/heads/one", prSha },
+                    { $"refs/pull/{number}/head", prSha }
                 });
             var target = new GitPullRequestService();
             var gitHubRepositories = target.GetGitHubRepositories(repo);
@@ -82,7 +82,7 @@ public class GitPullRequestServiceTests
     static IRepository CreateRepository(
         string originUrl,
         string headSha, string remoteName, string upstreamBranchCanonicalName,
-        (string CanonicalName, string TargetIdentifier)[] refs)
+        IDictionary<string, string> refs)
     {
         var repo = Substitute.For<IRepository>();
         var remoteList = remoteName != null ? new Remote[] { CreateRemote(remoteName, originUrl) } : Array.Empty<Remote>();
@@ -126,13 +126,13 @@ public class GitPullRequestServiceTests
         return network;
     }
 
-    static void AddReferences(IRepository repository, Remote remote, (string CanonicalName, string TargetIdentifier)[] refs)
+    static void AddReferences(IRepository repository, Remote remote, IDictionary<string, string> refs)
     {
         var references = refs.Select(r =>
         {
             var reference = Substitute.For<Reference>();
-            reference.CanonicalName.Returns(r.CanonicalName);
-            reference.TargetIdentifier.Returns(r.TargetIdentifier);
+            reference.CanonicalName.Returns(r.Key);
+            reference.TargetIdentifier.Returns(r.Value);
             return reference;
         }).ToList();
 
