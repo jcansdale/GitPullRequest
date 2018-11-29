@@ -86,8 +86,9 @@ namespace GitPullRequest
                     continue;
                 }
 
+                var remotePrefix = pr.Repository.RemoteName != "origin" ? pr.Repository.RemoteName : "";
                 var remotePostfix = branch.RemoteName != "origin" ? $" ({branch.RemoteName})" : "";
-                Console.WriteLine($"#{pr.Number} {branch.FriendlyName}{remotePostfix}");
+                Console.WriteLine($"{remotePrefix}#{pr.Number} {branch.FriendlyName}{remotePostfix}");
             }
         }
 
