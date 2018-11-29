@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
+using System.Collections.Generic;
 using NUnit.Framework;
 using GitPullRequest.Services;
 using NSubstitute;
@@ -9,21 +11,21 @@ public class GitPullRequestServiceTests
 {
     public class TheFindCompareUrlMethod
     {
-        [TestCase("https://github.com/owner/repo", "refs/heads/branchName", "refs/heads/branchName", "https://github.com/owner/repo/compare/branchName")]
-        [TestCase("https://github.com/owner/repo", "refs/heads/deleted", "refs/heads/branchName", null)]
-        [TestCase("https://github.com/owner/repo", null, "refs/heads/branchName", null, Description = "No tracking branch")]
-        public void Foo(string originUrl, string upstreamBranchCanonicalName, string referenceCanonicalName,
+        [TestCase("https://github.com/owner/repo", "origin", "refs/heads/branchName", "refs/heads/branchName", "https://github.com/owner/repo/compare/branchName")]
+        [TestCase("https://github.com/owner/repo", "origin", "refs/heads/deleted", "refs/heads/branchName", null)]
+        [TestCase("https://github.com/owner/repo", null, null, "refs/heads/branchName", null, Description = "No tracking branch")]
+        public void FindCompareUrl(string originUrl, string originName, string upstreamBranchCanonicalName, string referenceCanonicalName,
             string expectUrl)
         {
             var repo = CreateRepository(originUrl,
-                "headSha", upstreamBranchCanonicalName, new[]
+                "headSha", originName, upstreamBranchCanonicalName, new[]
                 {
                     (referenceCanonicalName, "refSha")
                 });
             var target = new GitPullRequestService();
-            var gitHubRepository = target.GetGitHubRepository(repo);
+            var gitHubRepositories = target.GetGitHubRepositories(repo);
 
-            var compareUrl = target.FindCompareUrl(gitHubRepository, repo);
+            var compareUrl = target.FindCompareUrl(gitHubRepositories, repo);
 
             Assert.That(compareUrl, Is.EqualTo(expectUrl));
         }
@@ -48,11 +50,11 @@ public class GitPullRequestServiceTests
         [Test]
         public void NoPrs()
         {
-            var repo = CreateRepository("https://github.com/owner/repo", "sha", null, new (string, string)[0]);
+            var repo = CreateRepository("https://github.com/owner/repo", "sha", null, null, new (string, string)[0]);
             var target = new GitPullRequestService();
-            var gitHubRepository = target.GetGitHubRepository(repo);
+            var gitHubRepositories = target.GetGitHubRepositories(repo);
 
-            var prs = target.FindPullRequests(gitHubRepository, repo);
+            var prs = target.FindPullRequests(gitHubRepositories, repo);
 
             Assert.That(prs, Is.Empty);
         }
@@ -63,59 +65,69 @@ public class GitPullRequestServiceTests
         {
             var number = 777;
             var repo = CreateRepository("https://github.com/owner/repo",
-                headSha, "refs/heads/one", new[]
+                headSha, "origin", "refs/heads/one", new[]
                 {
                     ("refs/heads/one", prSha),
                     ($"refs/pull/{number}/head", prSha)
                 });
             var target = new GitPullRequestService();
-            var gitHubRepository = target.GetGitHubRepository(repo);
+            var gitHubRepositories = target.GetGitHubRepositories(repo);
 
-            var prs = target.FindPullRequests(gitHubRepository, repo);
+            var prs = target.FindPullRequests(gitHubRepositories, repo);
 
-            Assert.That(prs.FirstOrDefault(), Is.EqualTo(number));
+            Assert.That(prs.FirstOrDefault().Number, Is.EqualTo(number));
         }
     }
 
     static IRepository CreateRepository(
         string originUrl,
-        string headSha, string upstreamBranchCanonicalName,
+        string headSha, string remoteName, string upstreamBranchCanonicalName,
         (string CanonicalName, string TargetIdentifier)[] refs)
     {
         var repo = Substitute.For<IRepository>();
-        var network = CreateNetwork(refs);
-        var remotes = CreateRemoteCollection(originUrl);
-        network.Remotes.Returns(remotes);
+        var remoteList = remoteName != null ? new Remote[] { CreateRemote(remoteName, originUrl) } : Array.Empty<Remote>();
+        var network = CreateNetwork(remoteList);
         repo.Network.Returns(network);
-        var branch = CreateBranch(headSha, upstreamBranchCanonicalName);
+        if (remoteName != null)
+        {
+            AddReferences(repo, remoteList[0], refs);
+        }
+        var branch = CreateBranch(headSha, remoteName, upstreamBranchCanonicalName);
         repo.Head.Returns(branch);
         return repo;
     }
 
-    static object CreateRemoteCollection(string originUrl)
+    private static Remote CreateRemote(string remoteName, string originUrl)
     {
-        var remotes = Substitute.For<RemoteCollection>();
         var remote = Substitute.For<Remote>();
+        remote.Name.Returns(remoteName);
         remote.Url.Returns(originUrl);
-        remotes["origin"].Returns(remote);
-        return remotes;
+        return remote;
     }
 
-    static Branch CreateBranch(string sha, string upstreamBranchCanonicalName)
+    static Branch CreateBranch(string sha, string remoteName, string upstreamBranchCanonicalName)
     {
-        var isTracking = upstreamBranchCanonicalName != null;
+        var isTracking = remoteName != null && upstreamBranchCanonicalName != null;
         var branch = Substitute.For<Branch>();
         var commit = Substitute.For<Commit>();
         commit.Sha.Returns(sha);
         branch.Tip.Returns(commit);
         branch.IsTracking.Returns(isTracking);
+        branch.RemoteName.Returns(remoteName);
         branch.UpstreamBranchCanonicalName.Returns(upstreamBranchCanonicalName);
         return branch;
     }
 
-    static Network CreateNetwork((string CanonicalName, string TargetIdentifier)[] refs)
+    static Network CreateNetwork(IList<Remote> remoteList)
     {
         var network = Substitute.For<Network>();
+        var remotes = CreateRemoteCollection(remoteList);
+        network.Remotes.Returns(remotes);
+        return network;
+    }
+
+    static void AddReferences(IRepository repository, Remote remote, (string CanonicalName, string TargetIdentifier)[] refs)
+    {
         var references = refs.Select(r =>
         {
             var reference = Substitute.For<Reference>();
@@ -123,7 +135,18 @@ public class GitPullRequestServiceTests
             reference.TargetIdentifier.Returns(r.TargetIdentifier);
             return reference;
         }).ToList();
-        network.ListReferences(null as Remote, null as CredentialsHandler).ReturnsForAnyArgs(references);
-        return network;
+
+        repository.Network.ListReferences(remote, Arg.Any<CredentialsHandler>()).Returns(references);
+    }
+
+    static RemoteCollection CreateRemoteCollection(IList<Remote> remoteList)
+    {
+        var remotes = Substitute.For<RemoteCollection>();
+        remotes.GetEnumerator().Returns(_ => remoteList.GetEnumerator());
+        foreach (var remote in remoteList)
+        {
+            remotes[remote.Name].Returns(remote);
+        }
+        return remotes;
     }
 }

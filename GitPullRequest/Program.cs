@@ -21,21 +21,21 @@ namespace GitPullRequest
             using (var repo = new Repository(repoPath))
             {
                 var service = new GitPullRequestService();
-                var gitHubRepository = service.GetGitHubRepository(repo);
-                var prs = service.FindPullRequests(gitHubRepository, repo);
+                var gitHubRepositories = service.GetGitHubRepositories(repo);
+                var prs = service.FindPullRequests(gitHubRepositories, repo);
 
                 if (prs.Count > 0)
                 {
                     foreach (var pr in prs)
                     {
-                        var prUrl = service.GetPullRequestUrl(gitHubRepository, pr);
+                        var prUrl = service.GetPullRequestUrl(pr.Repository, pr.Number);
                         Browse(prUrl);
                     }
 
                     return;
                 }
 
-                var compareUrl = service.FindCompareUrl(gitHubRepository, repo);
+                var compareUrl = service.FindCompareUrl(gitHubRepositories, repo);
                 if (compareUrl != null)
                 {
                     Browse(compareUrl);
