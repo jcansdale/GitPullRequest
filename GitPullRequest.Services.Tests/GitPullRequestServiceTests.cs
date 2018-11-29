@@ -80,11 +80,33 @@ public class GitPullRequestServiceTests
 
             Assert.That(prs.FirstOrDefault().Number, Is.EqualTo(number));
         }
+
+        [Test]
+        public void Pull_Request_To_Upstream_Repository()
+        {
+            var number = 777;
+            var originUrl = "https://github.com/origin/repo";
+            var upstreamUrl = "https://github.com/upstream/repo";
+            var prSha = "prSha";
+            var originRemote = CreateRemote("origin", originUrl);
+            var upstreamRemote = CreateRemote("upstream", upstreamUrl);
+            var repo = CreateRepository(prSha, "origin", "refs/heads/one", new[] { originRemote, upstreamRemote });
+            AddRemoteReferences(repo, originRemote, new Dictionary<string, string> { { "refs/heads/one", prSha } });
+            AddRemoteReferences(repo, upstreamRemote, new Dictionary<string, string> { { $"refs/pull/{number}/head", prSha } });
+            var target = new GitPullRequestService();
+            var gitHubRepositories = target.GetGitHubRepositories(repo);
+
+            var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
+
+            var pr = prs.FirstOrDefault();
+            Assert.That(pr.Repository.Url, Is.EqualTo(upstreamUrl));
+            Assert.That(pr.Number, Is.EqualTo(number));
+        }
     }
 
     static IRepository CreateRepository(
-        string headSha, string remoteName, string upstreamBranchCanonicalName,
-        IList<Remote> remoteList)
+            string headSha, string remoteName, string upstreamBranchCanonicalName,
+            IList<Remote> remoteList)
     {
         var repo = Substitute.For<IRepository>();
         var network = CreateNetwork(remoteList);
