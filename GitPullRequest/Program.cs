@@ -15,7 +15,10 @@ namespace GitPullRequest
         public static int Main(string[] args)
             => CommandLineApplication.Execute<Program>(args);
 
-        [Argument(0, Description = "The target git directory")]
+        [Argument(0, Description = "The target pull request number")]
+        public int PullRequestNumber { get; }
+
+        [Option("--dir", Description = "The target git directory")]
         public string TargetDir { get; } = Directory.GetCurrentDirectory();
 
         [Option("--list", Description = "List local branches with associated pull requests")]
@@ -46,16 +49,26 @@ namespace GitPullRequest
         void BrowsePullRequest(GitPullRequestService service, Repository repo)
         {
             var gitHubRepositories = service.GetGitHubRepositories(repo);
-            var prs = service.FindPullRequests(gitHubRepositories, repo.Head);
+
+            var prs = (PullRequestNumber == 0 ? service.FindPullRequests(gitHubRepositories, repo.Head) :
+                repo.Branches
+                    .Where(b => !b.IsRemote)
+                    .SelectMany(b => service.FindPullRequests(gitHubRepositories, b))
+                    .Where(pr => pr.Number == PullRequestNumber)).ToList();
 
             if (prs.Count > 0)
             {
                 foreach (var pr in prs)
                 {
-                    var prUrl = service.GetPullRequestUrl(pr.Repository, pr.Number);
-                    Browse(prUrl);
+                    Browse(service.GetPullRequestUrl(pr.Repository, pr.Number));
                 }
 
+                return;
+            }
+
+            if (PullRequestNumber != 0)
+            {
+                Console.WriteLine("Couldn't find pull request #" + PullRequestNumber);
                 return;
             }
 
@@ -72,23 +85,29 @@ namespace GitPullRequest
         void ListBranches(GitPullRequestService service, Repository repo)
         {
             var gitHubRepositories = service.GetGitHubRepositories(repo);
-            foreach (var branch in repo.Branches)
+            var prs = repo.Branches
+                .Where(b => !b.IsRemote)
+                .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
+                .Where(bp => PullRequestNumber == 0 || bp.PullRequest.Number == PullRequestNumber)
+                .ToList();
+
+            if (prs.Count == 0)
             {
-                if (branch.IsRemote)
+                if (PullRequestNumber == 0)
                 {
-                    continue;
+                    Console.WriteLine("Couldn't find any branch with associated pull request in repository");
+                    return;
                 }
 
-                var prs = service.FindPullRequests(gitHubRepositories, branch);
-                var pr = prs.FirstOrDefault();
-                if (pr == default)
-                {
-                    continue;
-                }
+                Console.WriteLine($"Couldn't find branch associated with pull request #{PullRequestNumber} in repository");
+                return;
+            }
 
-                var remotePrefix = pr.Repository.RemoteName != "origin" ? pr.Repository.RemoteName : "";
-                var remotePostfix = branch.RemoteName != "origin" ? $" ({branch.RemoteName})" : "";
-                Console.WriteLine($"{remotePrefix}#{pr.Number} {branch.FriendlyName}{remotePostfix}");
+            foreach (var bp in prs)
+            {
+                var remotePrefix = bp.PullRequest.Repository.RemoteName != "origin" ? bp.PullRequest.Repository.RemoteName : "";
+                var remotePostfix = bp.Branch.RemoteName != "origin" ? $" ({bp.Branch.RemoteName})" : "";
+                Console.WriteLine($"{remotePrefix}#{bp.PullRequest.Number} {bp.Branch.FriendlyName}{remotePostfix}");
             }
         }
 
