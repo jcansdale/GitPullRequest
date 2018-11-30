@@ -4,7 +4,7 @@ This Git extension is developed as a .NET core CLI tool.
 
 To install execute the folowing:
 ```
-dotnet tool uninstall --global GitPullRequest
+dotnet tool install --global GitPullRequest
 ```
 
 To browse or create a pull request:
