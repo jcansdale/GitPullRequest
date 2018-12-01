@@ -55,7 +55,6 @@ namespace GitPullRequest
 
             var prs = (PullRequestNumber == 0 ? service.FindPullRequests(gitHubRepositories, repo.Head) :
                 repo.Branches
-                    .Where(b => !b.IsRemote)
                     .SelectMany(b => service.FindPullRequests(gitHubRepositories, b))
                     .Where(pr => pr.Number == PullRequestNumber)).ToList();
 
