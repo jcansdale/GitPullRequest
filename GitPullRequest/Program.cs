@@ -87,15 +87,16 @@ namespace GitPullRequest
         void ListBranches(GitPullRequestService service, Repository repo)
         {
             var gitHubRepositories = service.GetGitHubRepositories(repo);
-            var prs = repo.Branches
+            var groups = repo.Branches
                 .Where(b => All || !b.IsRemote)
                 .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
                 .Where(bp => PullRequestNumber == 0 || bp.PullRequest.Number == PullRequestNumber)
-                .OrderBy(bp => bp.Branch.IsRemote)
-                .ThenBy(bp => bp.PullRequest.Number)
+                .GroupBy(bp => bp.PullRequest)
+                .OrderBy(g => g.Key.Repository.RemoteName)
+                .ThenBy(g => g.Key.Number)
                 .ToList();
 
-            if (prs.Count == 0)
+            if (groups.Count == 0)
             {
                 if (PullRequestNumber == 0)
                 {
@@ -107,12 +108,16 @@ namespace GitPullRequest
                 return;
             }
 
-            foreach (var bp in prs)
+            foreach (var group in groups)
             {
-                var isHead = bp.Branch.IsCurrentRepositoryHead ? "* " : "  ";
-                var remotePrefix = bp.PullRequest.Repository.RemoteName != "origin" ? bp.PullRequest.Repository.RemoteName : "";
-                var remotePostfix = bp.Branch.RemoteName != "origin" ? $" ({bp.Branch.RemoteName})" : "";
-                Console.WriteLine($"{isHead}{remotePrefix}#{bp.PullRequest.Number} {bp.Branch.FriendlyName}{remotePostfix}");
+                var isHead = group.Any(bp => bp.Branch.IsCurrentRepositoryHead);
+                var headMarker = isHead ? "* " : "  ";
+                var remotePrefix = group.Key.Repository.RemoteName != "origin" ? group.Key.Repository.RemoteName : "";
+                var isOrigin = group.Any(bp => bp.Branch.RemoteName == "origin");
+                var remotes = string.Join(", ", group.Select(bp => bp.Branch.RemoteName));
+                var friendlyNames = string.Join(", ", group.Select(pb => pb.Branch.FriendlyName));
+                var remotePostfix = isOrigin ? "" : $" ({remotes}))";
+                Console.WriteLine($"{headMarker}{remotePrefix}#{group.Key.Number} {friendlyNames}{remotePostfix}");
             }
         }
 
