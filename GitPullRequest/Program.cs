@@ -24,6 +24,9 @@ namespace GitPullRequest
         [Option("--list", Description = "List local branches with associated pull requests")]
         public bool List { get; }
 
+        [Option("--all", Description = "List all branches with associated pull requests")]
+        public bool All { get; }
+
         void OnExecute()
         {
             var repoPath = Repository.Discover(TargetDir);
@@ -36,7 +39,7 @@ namespace GitPullRequest
             var service = new GitPullRequestService();
             using (var repo = new Repository(repoPath))
             {
-                if (List)
+                if (List || All)
                 {
                     ListBranches(service, repo);
                     return;
@@ -52,7 +55,6 @@ namespace GitPullRequest
 
             var prs = (PullRequestNumber == 0 ? service.FindPullRequests(gitHubRepositories, repo.Head) :
                 repo.Branches
-                    .Where(b => !b.IsRemote)
                     .SelectMany(b => service.FindPullRequests(gitHubRepositories, b))
                     .Where(pr => pr.Number == PullRequestNumber)).ToList();
 
@@ -86,9 +88,11 @@ namespace GitPullRequest
         {
             var gitHubRepositories = service.GetGitHubRepositories(repo);
             var prs = repo.Branches
-                .Where(b => !b.IsRemote)
+                .Where(b => All || !b.IsRemote)
                 .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
                 .Where(bp => PullRequestNumber == 0 || bp.PullRequest.Number == PullRequestNumber)
+                .OrderBy(bp => bp.Branch.IsRemote)
+                .ThenBy(bp => bp.PullRequest.Number)
                 .ToList();
 
             if (prs.Count == 0)
