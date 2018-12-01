@@ -91,6 +91,8 @@ namespace GitPullRequest
                 .Where(b => All || !b.IsRemote)
                 .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
                 .Where(bp => PullRequestNumber == 0 || bp.PullRequest.Number == PullRequestNumber)
+                .OrderBy(bp => bp.Branch.IsRemote)
+                .ThenBy(bp => bp.PullRequest.Number)
                 .ToList();
 
             if (prs.Count == 0)
