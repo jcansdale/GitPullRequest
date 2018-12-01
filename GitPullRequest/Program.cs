@@ -105,9 +105,10 @@ namespace GitPullRequest
 
             foreach (var bp in prs)
             {
+                var isHead = bp.Branch.IsCurrentRepositoryHead ? "* " : "  ";
                 var remotePrefix = bp.PullRequest.Repository.RemoteName != "origin" ? bp.PullRequest.Repository.RemoteName : "";
                 var remotePostfix = bp.Branch.RemoteName != "origin" ? $" ({bp.Branch.RemoteName})" : "";
-                Console.WriteLine($"{remotePrefix}#{bp.PullRequest.Number} {bp.Branch.FriendlyName}{remotePostfix}");
+                Console.WriteLine($"{isHead}{remotePrefix}#{bp.PullRequest.Number} {bp.Branch.FriendlyName}{remotePostfix}");
             }
         }
 
