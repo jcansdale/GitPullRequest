@@ -111,8 +111,14 @@ namespace GitPullRequest
             {
                 var isHead = bp.Branch.IsCurrentRepositoryHead ? "* " : "  ";
                 var remotePrefix = bp.PullRequest.Repository.RemoteName != "origin" ? bp.PullRequest.Repository.RemoteName : "";
-                var remotePostfix = bp.Branch.RemoteName != "origin" ? $" ({bp.Branch.RemoteName})" : "";
-                Console.WriteLine($"{isHead}{remotePrefix}#{bp.PullRequest.Number} {bp.Branch.FriendlyName}{remotePostfix}");
+
+                var postfix = bp.PullRequest.IsDeleted ? "x " : "" + bp.Branch.RemoteName != "origin" ? bp.Branch.RemoteName : "";
+                if (postfix.Length > 0)
+                {
+                    postfix = $" ({postfix.TrimEnd()})";
+                }
+
+                Console.WriteLine($"{isHead}{remotePrefix}#{bp.PullRequest.Number} {bp.Branch.FriendlyName}{postfix}");
             }
         }
 

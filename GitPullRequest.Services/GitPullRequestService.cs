@@ -31,15 +31,16 @@ namespace GitPullRequest.Services
             };
         }
 
-        public IList<(GitHubRepository Repository, int Number)> FindPullRequests(
+        public IList<(GitHubRepository Repository, int Number, bool IsDeleted)> FindPullRequests(
             IDictionary<string, GitHubRepository> gitHubRepositories, Branch branch)
         {
+            var isDeleted = false;
             string sha = null;
             if (branch.IsTracking)
             {
                 var gitHubRepository = gitHubRepositories[branch.RemoteName];
                 var references = gitHubRepository.References;
-                references.TryGetValue(branch.UpstreamBranchCanonicalName, out sha);
+                isDeleted = !references.TryGetValue(branch.UpstreamBranchCanonicalName, out sha);
             }
 
             if (sha == null)
@@ -47,7 +48,8 @@ namespace GitPullRequest.Services
                 sha = branch.Tip.Sha;
             }
 
-            return FindPullRequestsForSha(gitHubRepositories, sha);
+            return FindPullRequestsForSha(gitHubRepositories, sha)
+                .Select(pr => (pr.Repository, pr.Number, isDeleted)).ToList();
         }
 
         public IList<(GitHubRepository Repository, int Number)> FindPullRequestsForSha(
