@@ -27,6 +27,9 @@ namespace GitPullRequest
         [Option("--all", Description = "List all branches with associated pull requests")]
         public bool All { get; }
 
+        [Option("--prune", Description = "Remove pull requests with deleted remote branches")]
+        public bool Prune { get; }
+
         void OnExecute()
         {
             var repoPath = Repository.Discover(TargetDir);
@@ -39,6 +42,12 @@ namespace GitPullRequest
             var service = new GitPullRequestService();
             using (var repo = new Repository(repoPath))
             {
+                if (Prune)
+                {
+                    PruneBranches(service, repo);
+                    return;
+                }
+
                 if (List || All)
                 {
                     ListBranches(service, repo);
@@ -119,6 +128,36 @@ namespace GitPullRequest
                 }
 
                 Console.WriteLine($"{isHead}{remotePrefix}#{bp.PullRequest.Number} {bp.Branch.FriendlyName}{postfix}");
+            }
+        }
+
+        void PruneBranches(GitPullRequestService service, Repository repo)
+        {
+            var gitHubRepositories = service.GetGitHubRepositories(repo);
+            var prs = repo.Branches
+                .Where(b => !b.IsRemote)
+                .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
+                .Where(bp => bp.PullRequest.IsDeleted)
+                .Where(bp => PullRequestNumber == 0 || bp.PullRequest.Number == PullRequestNumber)
+                .ToList();
+
+            if (prs.Count == 0)
+            {
+                Console.WriteLine($"Couldn't find any pull requests with deleted remote branches to remove");
+                return;
+            }
+
+            foreach (var bp in prs)
+            {
+                if (bp.Branch.IsCurrentRepositoryHead)
+                {
+                    Console.WriteLine($"Can't remove current repository head #{bp.PullRequest.Number} {bp.Branch.FriendlyName}");
+                }
+                else
+                {
+                    Console.WriteLine($"Removing #{bp.PullRequest.Number} {bp.Branch.FriendlyName}");
+                    repo.Branches.Remove(bp.Branch);
+                }
             }
         }
 
