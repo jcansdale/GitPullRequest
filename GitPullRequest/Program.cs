@@ -1,10 +1,11 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Diagnostics;
+using System.ComponentModel;
 using LibGit2Sharp;
 using GitPullRequest.Services;
 using McMaster.Extensions.CommandLineUtils;
-using System.Linq;
 
 namespace GitPullRequest
 {
@@ -71,7 +72,9 @@ namespace GitPullRequest
             {
                 foreach (var pr in prs)
                 {
-                    Browse(service.GetPullRequestUrl(pr.Repository, pr.Number));
+                    var url = service.GetPullRequestUrl(pr.Repository, pr.Number);
+                    Console.WriteLine(url);
+                    TryBrowse(url);
                 }
 
                 return;
@@ -86,7 +89,8 @@ namespace GitPullRequest
             var compareUrl = service.FindCompareUrl(gitHubRepositories, repo);
             if (compareUrl != null)
             {
-                Browse(compareUrl);
+                Console.WriteLine(compareUrl);
+                TryBrowse(compareUrl);
                 return;
             }
 
@@ -161,13 +165,22 @@ namespace GitPullRequest
             }
         }
 
-        void Browse(string pullUrl)
+        bool TryBrowse(string url)
         {
-            Process.Start(new ProcessStartInfo
+            try
             {
-                FileName = pullUrl,
-                UseShellExecute = true
-            });
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+
+                return false;
+            }
+            catch (Win32Exception)
+            {
+                return false;
+            }
         }
     }
 }
