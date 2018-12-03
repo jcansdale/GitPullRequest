@@ -17,7 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="LibGit2Sharp" Version="0.26.0-preview-0062" />
+    <PackageReference Include="LibGit2Sharp" Version="0.26.0-preview-0070" />
     <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.3.0-alpha" />
     <PackageReference Include="Microsoft.Alm.Authentication" Version="4.3.0" />
   </ItemGroup>
