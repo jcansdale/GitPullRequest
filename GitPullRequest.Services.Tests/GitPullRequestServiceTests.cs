@@ -25,25 +25,11 @@ public class GitPullRequestServiceTests
                 AddRemoteReferences(repo, remote, new Dictionary<string, string> { { referenceCanonicalName, "refSha" } });
             }
             var target = new GitPullRequestService();
-            var gitHubRepositories = target.GetGitHubRepositories(repo);
+            var gitHubRepositories = target.GetGitRepositories(repo);
 
             var compareUrl = target.FindCompareUrl(gitHubRepositories, repo);
 
             Assert.That(compareUrl, Is.EqualTo(expectUrl));
-        }
-    }
-
-    public class TheGetPullRequestUrlMethod
-    {
-        [TestCase("https://github.com/owner/repo", 777, "https://github.com/owner/repo/pull/777")]
-        public void GetPullRequestUrl(string url, int number, string expectUrl)
-        {
-            var gitHubRepository = new GitHubRepository { Url = url };
-            var target = new GitPullRequestService();
-
-            var pullRequestUrl = target.GetPullRequestUrl(gitHubRepository, number);
-
-            Assert.That(pullRequestUrl, Is.EqualTo(expectUrl));
         }
     }
 
@@ -54,7 +40,7 @@ public class GitPullRequestServiceTests
         {
             var repo = CreateRepository("sha", null, null, Array.Empty<Remote>());
             var target = new GitPullRequestService();
-            var gitHubRepositories = target.GetGitHubRepositories(repo);
+            var gitHubRepositories = target.GetGitRepositories(repo);
 
             var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
 
@@ -76,7 +62,7 @@ public class GitPullRequestServiceTests
                     { $"refs/pull/{number}/head", prSha }
                 });
             var target = new GitPullRequestService();
-            var gitHubRepositories = target.GetGitHubRepositories(repo);
+            var gitHubRepositories = target.GetGitRepositories(repo);
 
             var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
 
@@ -100,7 +86,7 @@ public class GitPullRequestServiceTests
             AddRemoteReferences(repo, originRemote, new Dictionary<string, string> { { "refs/heads/one", prSha } });
             AddRemoteReferences(repo, upstreamRemote, new Dictionary<string, string> { { $"refs/pull/{number}/head", prSha } });
             var target = new GitPullRequestService();
-            var gitHubRepositories = target.GetGitHubRepositories(repo);
+            var gitHubRepositories = target.GetGitRepositories(repo);
 
             var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
 
