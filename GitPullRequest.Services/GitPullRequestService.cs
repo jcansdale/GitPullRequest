@@ -10,9 +10,9 @@ namespace GitPullRequest.Services
 {
     public class GitPullRequestService
     {
-        public IDictionary<string, GitRepository> GetGitRepositories(IRepository repo)
+        public IDictionary<string, RemoteRepository> GetGitRepositories(IRepository repo)
         {
-            var gitRepositories = new Dictionary<string, GitRepository>();
+            var gitRepositories = new Dictionary<string, RemoteRepository>();
             foreach (var remote in repo.Network.Remotes)
             {
                 var remoteName = remote.Name;
@@ -22,8 +22,8 @@ namespace GitPullRequest.Services
             return gitRepositories;
         }
 
-        public IList<(GitRepository Repository, int Number, bool IsDeleted)> FindPullRequests(
-            IDictionary<string, GitRepository> gitRepositories, Branch branch)
+        public IList<(RemoteRepository Repository, int Number, bool IsDeleted)> FindPullRequests(
+            IDictionary<string, RemoteRepository> gitRepositories, Branch branch)
         {
             var isDeleted = false;
             string sha = null;
@@ -43,8 +43,8 @@ namespace GitPullRequest.Services
                 .Select(pr => (pr.Repository, pr.Number, isDeleted)).ToList();
         }
 
-        public IList<(GitRepository Repository, int Number)> FindPullRequestsForSha(
-            IDictionary<string, GitRepository> gitRepositories, string sha)
+        public IList<(RemoteRepository Repository, int Number)> FindPullRequestsForSha(
+            IDictionary<string, RemoteRepository> gitRepositories, string sha)
         {
             return gitRepositories
                 .SelectMany(r => r.Value.References, (x, y) => (Repository: x.Value, Reference: y))
@@ -53,7 +53,7 @@ namespace GitPullRequest.Services
                 .ToList();
         }
 
-        public string FindCompareUrl(IDictionary<string, GitRepository> gitRepositories, IRepository repo)
+        public string FindCompareUrl(IDictionary<string, RemoteRepository> gitRepositories, IRepository repo)
         {
             var branch = repo.Head;
             if (!branch.IsTracking)

@@ -1,13 +1,11 @@
-﻿using LibGit2Sharp;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System;
+using LibGit2Sharp;
 
 namespace GitPullRequest.Services
 {
     public static class GitRepositoryFactory
     {
-        public static GitRepository Create(IRepository repo, string remoteName)
+        public static RemoteRepository Create(IRepository repo, string remoteName)
         {
             var uri = new Uri(repo.Network.Remotes[remoteName].Url);
 
@@ -15,7 +13,7 @@ namespace GitPullRequest.Services
             {
                 return new GitHubRepository(repo, remoteName);
             }
-            else if (uri.Host.EndsWith(".visualstudio.com", StringComparison.OrdinalIgnoreCase))
+            else if (uri.Host.EndsWith(".visualstudio.com", StringComparison.OrdinalIgnoreCase) || uri.Host.Equals("dev.azure.com", StringComparison.OrdinalIgnoreCase))
             {
                 return new AzureDevOpsRepository(repo, remoteName);
             }

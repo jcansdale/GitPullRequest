@@ -1,17 +1,16 @@
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using LibGit2Sharp;
 
 namespace GitPullRequest.Services
 {
-    internal class GitHubRepository : GitRepository
+    internal class GitHubRepository : RemoteRepository
     {
         public GitHubRepository(IRepository repo, string remoteName)
             : base(repo, remoteName)
         {
         }
 
-        public override string GetRepositoryUrl(IRepository repo, string remoteName)
+        protected override string GetRepositoryUrl(IRepository repo, string remoteName)
         {
             var url = base.GetRepositoryUrl(repo, remoteName);
             var postfix = ".git";

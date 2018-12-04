@@ -6,9 +6,8 @@ using LibGit2Sharp.Handlers;
 
 namespace GitPullRequest.Services
 {
-    internal class AzureDevOpsRepository : GitRepository
+    internal class AzureDevOpsRepository : RemoteRepository
     {
-
         public AzureDevOpsRepository(IRepository repo, string remoteName)
             : base(repo, remoteName)
         {
@@ -25,33 +24,22 @@ namespace GitPullRequest.Services
             return -1;
         }
 
-        protected override string GetTipForReference(IRepository repo, Reference reference, CredentialsHandler credentialsHandler)
+        protected override string GetTipForReference(IRepository repo, Reference reference)
         {
-            // Sadly for Azure DevOps there is an automatic merge commit that is at the tip of the ref, so we have to fetch it, in order to find the previous commit
-            // as that is what the users branch will be up to
             if (reference.CanonicalName.StartsWith("refs/pull/", StringComparison.OrdinalIgnoreCase))
             {
-                Commit commit;
-                try
+                // Sadly for Azure DevOps there is an automatic merge commit that is at the tip of the ref, so we have to fetch it, in order to find the previous commit
+                // as that is what the users branch will be up to
+                if (repo.Lookup<Commit>(reference.TargetIdentifier) == null)
                 {
-                    commit = GetCommit();
+                    repo.Network.Fetch(this.RemoteName, new string[] { reference.CanonicalName }, new FetchOptions { CredentialsProvider = CreateCredentialsHandler() });
                 }
-                catch
-                {
-                    // Try again, but this time lets fetch the specific commit and see if that helps
-                    repo.Network.Fetch(this.RemoteName, new string[] { reference.CanonicalName }, new FetchOptions { CredentialsProvider = credentialsHandler });
-                    commit = GetCommit();
-                }
+                // Get the commit at HEAD^1
+                var commit = repo.Commits.QueryBy(new CommitFilter() { IncludeReachableFrom = reference.TargetIdentifier }).Skip(1).FirstOrDefault();
                 return commit.Sha;
             }
             return reference.TargetIdentifier;
-
-            Commit GetCommit()
-            {
-                return repo.Commits.QueryBy(new CommitFilter() { IncludeReachableFrom = reference.TargetIdentifier }).Skip(1).FirstOrDefault();
-            }
         }
-
 
         public override string GetPullRequestUrl(int number)
         {
