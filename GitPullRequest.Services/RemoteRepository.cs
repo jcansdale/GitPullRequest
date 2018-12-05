@@ -32,7 +32,7 @@ namespace GitPullRequest.Services
 
         protected virtual IDictionary<string, string> GetReferences(IRepository repo, string remoteName)
         {
-            CredentialsHandler credentialsHandler = CreateCredentialsHandler();
+            var credentialsHandler = CreateCredentialsHandler();
 
             var dictionary = new Dictionary<string, string>();
             var remote = repo.Network.Remotes[remoteName];
