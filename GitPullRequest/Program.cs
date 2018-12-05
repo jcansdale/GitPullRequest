@@ -135,7 +135,7 @@ namespace GitPullRequest
 
         void PruneBranches(GitPullRequestService service, Repository repo)
         {
-            var gitHubRepositories = service.GetGitHubRepositories(repo);
+            var gitHubRepositories = service.GetGitRepositories(repo);
             var prs = repo.Branches
                 .Where(b => !b.IsRemote)
                 .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
