@@ -121,7 +121,8 @@ namespace GitPullRequest
                 var isHead = bp.Branch.IsCurrentRepositoryHead ? "* " : "  ";
                 var remotePrefix = bp.PullRequest.Repository.RemoteName != "origin" ? bp.PullRequest.Repository.RemoteName : "";
 
-                var postfix = bp.PullRequest.IsDeleted ? "x " : "" + bp.Branch.RemoteName != "origin" ? bp.Branch.RemoteName : "";
+                var branchRemoteName = bp.Branch.RemoteName ?? "";
+                var postfix = (bp.PullRequest.IsDeleted ? "x " : "") + (branchRemoteName != "origin" ? branchRemoteName : "");
                 if (postfix.Length > 0)
                 {
                     postfix = $" ({postfix.TrimEnd()})";
