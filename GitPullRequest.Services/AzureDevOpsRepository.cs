@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using LibGit2Sharp;
@@ -24,17 +25,18 @@ namespace GitPullRequest.Services
             return -1;
         }
 
+        protected override IDictionary<string, string> GetReferences(IRepository repo, string remoteName)
+        {
+            // for Azure DevOps we need to fetch PR branches so we can explore their history and get the commit before the automatic merge commit that is done on the server
+            repo.Network.Fetch(remoteName, new string[] { "+refs/pull/*/merge:refs/remotes/origin/pull/*/merge" }, new FetchOptions { CredentialsProvider = CreateCredentialsHandler() });
+            return base.GetReferences(repo, remoteName);
+        }
+
         protected override string GetTipForReference(IRepository repo, Reference reference)
         {
             if (reference.CanonicalName.StartsWith("refs/pull/", StringComparison.OrdinalIgnoreCase))
             {
-                // Sadly for Azure DevOps there is an automatic merge commit that is at the tip of the ref, so we have to fetch it, in order to find the previous commit
-                // as that is what the users branch will be up to
-                if (repo.Lookup<Commit>(reference.TargetIdentifier) == null)
-                {
-                    repo.Network.Fetch(this.RemoteName, new string[] { reference.CanonicalName }, new FetchOptions { CredentialsProvider = CreateCredentialsHandler() });
-                }
-                // Get the commit at HEAD^1
+                // Get the commit at HEAD^1 as Azure DevOps automatically adds a merge commit on the server
                 var commit = repo.Commits.QueryBy(new CommitFilter() { IncludeReachableFrom = reference.TargetIdentifier }).Skip(1).FirstOrDefault();
                 return commit.Sha;
             }
