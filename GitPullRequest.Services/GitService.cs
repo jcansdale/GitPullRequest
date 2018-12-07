@@ -36,7 +36,13 @@ namespace GitPullRequest.Services
 
             var secrets = new SecretStore("git");
             var auth = new BasicAuthentication(secrets);
-            var creds = auth.GetCredentials(new TargetUri(remoteUri.GetLeftPart(UriPartial.Authority)));
+
+            var targetUrl = remoteUri.GetLeftPart(UriPartial.Authority);
+            var creds = auth.GetCredentials(new TargetUri(targetUrl));
+            if (creds == null)
+            {
+                return null;
+            }
 
             CredentialsHandler credentialsHandler =
                 (url, user, cred) => new UsernamePasswordCredentials
