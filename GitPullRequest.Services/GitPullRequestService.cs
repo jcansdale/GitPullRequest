@@ -1,22 +1,25 @@
 ﻿using System.Linq;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using LibGit2Sharp;
-using LibGit2Sharp.Handlers;
-using Microsoft.Alm.Authentication;
-using System;
 
 namespace GitPullRequest.Services
 {
     public class GitPullRequestService
     {
+        readonly GitService gitService;
+
+        public GitPullRequestService(GitService gitService)
+        {
+            this.gitService = gitService;
+        }
+
         public IDictionary<string, RemoteRepository> GetGitRepositories(IRepository repo)
         {
             var gitRepositories = new Dictionary<string, RemoteRepository>();
             foreach (var remote in repo.Network.Remotes)
             {
                 var remoteName = remote.Name;
-                gitRepositories[remoteName] = GitRepositoryFactory.Create(repo, remoteName);
+                gitRepositories[remoteName] = GitRepositoryFactory.Create(gitService, repo, remoteName);
             }
 
             return gitRepositories;

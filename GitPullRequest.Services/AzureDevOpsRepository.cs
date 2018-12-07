@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using LibGit2Sharp;
-using LibGit2Sharp.Handlers;
 
 namespace GitPullRequest.Services
 {
     internal class AzureDevOpsRepository : RemoteRepository
     {
-        public AzureDevOpsRepository(IRepository repo, string remoteName)
-            : base(repo, remoteName)
+        readonly GitService gitService;
+
+        public AzureDevOpsRepository(GitService gitService, IRepository repo, string remoteName)
+            : base(gitService, repo, remoteName)
         {
+            this.gitService = gitService;
         }
 
         public override int FindPullRequestForCanonicalName(string canonicalName)
@@ -28,19 +30,20 @@ namespace GitPullRequest.Services
         protected override IDictionary<string, string> GetReferences(IRepository repo, string remoteName)
         {
             // for Azure DevOps we need to fetch PR branches so we can explore their history and get the commit before the automatic merge commit that is done on the server
-            repo.Network.Fetch(remoteName, new string[] { "+refs/pull/*/merge:refs/remotes/origin/pull/*/merge" }, new FetchOptions { CredentialsProvider = CreateCredentialsHandler() });
+            gitService.Fetch(repo, remoteName, "+refs/pull/*/merge:refs/remotes/origin/pull/*/merge");
+
             return base.GetReferences(repo, remoteName);
         }
 
-        protected override string GetTipForReference(IRepository repo, Reference reference)
+        protected override string GetTipForReference(IRepository repo, string canonicalName, string targetIdentifier)
         {
-            if (reference.CanonicalName.StartsWith("refs/pull/", StringComparison.OrdinalIgnoreCase))
+            if (canonicalName.StartsWith("refs/pull/", StringComparison.OrdinalIgnoreCase))
             {
                 // Get the commit at HEAD^1 as Azure DevOps automatically adds a merge commit on the server
-                var commit = repo.Commits.QueryBy(new CommitFilter() { IncludeReachableFrom = reference.TargetIdentifier }).Skip(1).FirstOrDefault();
+                var commit = repo.Commits.QueryBy(new CommitFilter() { IncludeReachableFrom = targetIdentifier }).Skip(1).FirstOrDefault();
                 return commit.Sha;
             }
-            return reference.TargetIdentifier;
+            return targetIdentifier;
         }
 
         public override string GetPullRequestUrl(int number)

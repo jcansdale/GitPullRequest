@@ -1,19 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using LibGit2Sharp;
-using LibGit2Sharp.Handlers;
-using Microsoft.Alm.Authentication;
 
 namespace GitPullRequest.Services
 {
     public abstract class RemoteRepository
     {
+        readonly GitService gitService;
+
         public string RemoteName { get; }
         public string Url { get; }
         public IDictionary<string, string> References { get; }
 
-        protected RemoteRepository(IRepository repo, string remoteName)
+        protected RemoteRepository(GitService gitService, IRepository repo, string remoteName)
         {
+            this.gitService = gitService;
+
             RemoteName = remoteName;
             Url = GetRepositoryUrl(repo, remoteName);
             References = GetReferences(repo, remoteName);
@@ -32,39 +33,21 @@ namespace GitPullRequest.Services
 
         protected virtual IDictionary<string, string> GetReferences(IRepository repo, string remoteName)
         {
-            var credentialsHandler = CreateCredentialsHandler();
+            var refs = gitService.ListReferences(repo, remoteName);
 
             var dictionary = new Dictionary<string, string>();
-            var remote = repo.Network.Remotes[remoteName];
-            var refs = repo.Network.ListReferences(remote, credentialsHandler);
             foreach (var reference in refs)
             {
-                var sha = GetTipForReference(repo, reference);
-                dictionary[reference.CanonicalName] = sha;
+                var (targetIdentifier, canonicalName) = (reference.Value, reference.Key);
+                dictionary[canonicalName] = GetTipForReference(repo, canonicalName, targetIdentifier);
             }
 
             return dictionary;
         }
 
-        protected CredentialsHandler CreateCredentialsHandler()
+        protected virtual string GetTipForReference(IRepository repo, string canonicalName, string targetIdentifier)
         {
-            var remoteUri = new Uri(Url);
-            var secrets = new SecretStore("git");
-            var auth = new BasicAuthentication(secrets);
-            var creds = auth.GetCredentials(new TargetUri(remoteUri.GetLeftPart(UriPartial.Authority)));
-
-            CredentialsHandler credentialsHandler =
-                (url, user, cred) => new UsernamePasswordCredentials
-                {
-                    Username = creds.Username,
-                    Password = creds.Password
-                };
-            return credentialsHandler;
-        }
-
-        protected virtual string GetTipForReference(IRepository repo, Reference reference)
-        {
-            return reference.TargetIdentifier;
+            return targetIdentifier;
         }
     }
 }

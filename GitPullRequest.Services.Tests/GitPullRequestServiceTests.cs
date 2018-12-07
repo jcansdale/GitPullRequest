@@ -24,7 +24,7 @@ public class GitPullRequestServiceTests
             {
                 AddRemoteReferences(repo, remote, new Dictionary<string, string> { { referenceCanonicalName, "refSha" } });
             }
-            var target = new GitPullRequestService();
+            GitPullRequestService target = CreateGitPullRequestService();
             var gitHubRepositories = target.GetGitRepositories(repo);
 
             var compareUrl = target.FindCompareUrl(gitHubRepositories, repo);
@@ -39,7 +39,7 @@ public class GitPullRequestServiceTests
         public void No_Pull_Request()
         {
             var repo = CreateRepository("sha", null, null, Array.Empty<Remote>());
-            var target = new GitPullRequestService();
+            var target = CreateGitPullRequestService();
             var gitHubRepositories = target.GetGitRepositories(repo);
 
             var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
@@ -61,7 +61,7 @@ public class GitPullRequestServiceTests
                     { "refs/heads/one", prSha },
                     { $"refs/pull/{number}/head", prSha }
                 });
-            var target = new GitPullRequestService();
+            var target = CreateGitPullRequestService();
             var gitHubRepositories = target.GetGitRepositories(repo);
 
             var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
@@ -85,7 +85,7 @@ public class GitPullRequestServiceTests
             var repo = CreateRepository(prSha, "origin", "refs/heads/one", new[] { originRemote, upstreamRemote });
             AddRemoteReferences(repo, originRemote, new Dictionary<string, string> { { "refs/heads/one", prSha } });
             AddRemoteReferences(repo, upstreamRemote, new Dictionary<string, string> { { $"refs/pull/{number}/head", prSha } });
-            var target = new GitPullRequestService();
+            var target = CreateGitPullRequestService();
             var gitHubRepositories = target.GetGitRepositories(repo);
 
             var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
@@ -95,6 +95,12 @@ public class GitPullRequestServiceTests
             Assert.That(pr.Repository.RemoteName, Is.EqualTo(upstreamRemoteName));
             Assert.That(pr.Number, Is.EqualTo(number));
         }
+    }
+
+    static GitPullRequestService CreateGitPullRequestService()
+    {
+        var gitService = new GitService();
+        return new GitPullRequestService(gitService);
     }
 
     static IRepository CreateRepository(

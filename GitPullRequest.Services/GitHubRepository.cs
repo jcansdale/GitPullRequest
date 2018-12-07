@@ -5,8 +5,8 @@ namespace GitPullRequest.Services
 {
     internal class GitHubRepository : RemoteRepository
     {
-        public GitHubRepository(IRepository repo, string remoteName)
-            : base(repo, remoteName)
+        public GitHubRepository(GitService gitService, IRepository repo, string remoteName)
+            : base(gitService, repo, remoteName)
         {
         }
 

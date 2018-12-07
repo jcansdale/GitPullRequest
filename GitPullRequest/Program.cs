@@ -39,7 +39,8 @@ namespace GitPullRequest
                 return;
             }
 
-            var service = new GitPullRequestService();
+            var gitService = new GitService();
+            var service = new GitPullRequestService(gitService);
             using (var repo = new Repository(repoPath))
             {
                 if (Prune)
