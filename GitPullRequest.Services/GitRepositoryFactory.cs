@@ -7,7 +7,22 @@ namespace GitPullRequest.Services
     {
         public static RemoteRepository Create(GitService gitService, IRepository repo, string remoteName)
         {
-            var uri = new Uri(repo.Network.Remotes[remoteName].Url);
+            var url = repo.Network.Remotes[remoteName].Url;
+            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri))
+            {
+                return null;
+            }
+
+            if (!uri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) &&
+                !uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (uri.GetLeftPart(UriPartial.Authority).Contains("@"))
+            {
+                return null;
+            }
 
             if (uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
             {

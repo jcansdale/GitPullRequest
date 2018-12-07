@@ -19,7 +19,13 @@ namespace GitPullRequest.Services
             foreach (var remote in repo.Network.Remotes)
             {
                 var remoteName = remote.Name;
-                gitRepositories[remoteName] = GitRepositoryFactory.Create(gitService, repo, remoteName);
+                var hostedRepository = GitRepositoryFactory.Create(gitService, repo, remote.Name);
+                if (hostedRepository == null)
+                {
+                    continue;
+                }
+
+                gitRepositories[remoteName] = hostedRepository;
             }
 
             return gitRepositories;
