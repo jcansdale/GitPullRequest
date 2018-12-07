@@ -8,12 +8,9 @@ namespace GitPullRequest.Services
 {
     internal class AzureDevOpsRepository : RemoteRepository
     {
-        readonly GitService gitService;
-
         public AzureDevOpsRepository(GitService gitService, IRepository repo, string remoteName)
             : base(gitService, repo, remoteName)
         {
-            this.gitService = gitService;
         }
 
         public override int FindPullRequestForCanonicalName(string canonicalName)
@@ -30,7 +27,7 @@ namespace GitPullRequest.Services
         protected override IDictionary<string, string> GetReferences(IRepository repo, string remoteName)
         {
             // for Azure DevOps we need to fetch PR branches so we can explore their history and get the commit before the automatic merge commit that is done on the server
-            gitService.Fetch(repo, remoteName, $"+refs/pull/*/merge:refs/remotes/{remoteName}/pull/*/merge");
+            GitService.Fetch(repo, remoteName, $"+refs/pull/*/merge:refs/remotes/{remoteName}/pull/*/merge");
 
             return base.GetReferences(repo, remoteName);
         }

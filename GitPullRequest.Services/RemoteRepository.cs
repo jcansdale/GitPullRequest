@@ -5,16 +5,14 @@ namespace GitPullRequest.Services
 {
     public abstract class RemoteRepository
     {
-        readonly GitService gitService;
-
+        protected GitService GitService { get; }
         public string RemoteName { get; }
         public string Url { get; }
         public IDictionary<string, string> References { get; }
 
         protected RemoteRepository(GitService gitService, IRepository repo, string remoteName)
         {
-            this.gitService = gitService;
-
+            GitService = gitService;
             RemoteName = remoteName;
             Url = GetRepositoryUrl(repo, remoteName);
             References = GetReferences(repo, remoteName);
@@ -33,7 +31,7 @@ namespace GitPullRequest.Services
 
         protected virtual IDictionary<string, string> GetReferences(IRepository repo, string remoteName)
         {
-            var refs = gitService.ListReferences(repo, remoteName);
+            var refs = GitService.ListReferences(repo, remoteName);
 
             var dictionary = new Dictionary<string, string>();
             foreach (var reference in refs)
