@@ -5,7 +5,7 @@ namespace GitPullRequest.Services
 {
     public static class GitRepositoryFactory
     {
-        public static RemoteRepository Create(GitService gitService, IRepository repo, string remoteName)
+        public static RemoteRepository Create(IGitService gitService, IRepository repo, string remoteName)
         {
             var url = repo.Network.Remotes[remoteName].Url;
             if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri))

@@ -6,7 +6,7 @@ using Microsoft.Alm.Authentication;
 
 namespace GitPullRequest.Services
 {
-    public class GitService
+    public class LibGitService : IGitService
     {
         public IDictionary<string, string> ListReferences(IRepository repo, string remoteName)
         {
@@ -14,7 +14,8 @@ namespace GitPullRequest.Services
 
             var dictionary = new Dictionary<string, string>();
             var remote = repo.Network.Remotes[remoteName];
-            var refs = repo.Network.ListReferences(remote, credentialsHandler);
+            var refs = credentialsHandler != null ?
+                repo.Network.ListReferences(remote, credentialsHandler) : repo.Network.ListReferences(remote);
             foreach (var reference in refs)
             {
                 dictionary[reference.CanonicalName] = reference.TargetIdentifier;

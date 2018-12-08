@@ -5,12 +5,12 @@ namespace GitPullRequest.Services
 {
     public abstract class RemoteRepository
     {
-        protected GitService GitService { get; }
+        protected IGitService GitService { get; }
         public string RemoteName { get; }
         public string Url { get; }
         public IDictionary<string, string> References { get; }
 
-        protected RemoteRepository(GitService gitService, IRepository repo, string remoteName)
+        protected RemoteRepository(IGitService gitService, IRepository repo, string remoteName)
         {
             GitService = gitService;
             RemoteName = remoteName;

@@ -30,6 +30,9 @@ namespace GitPullRequest
         [Option("--prune", Description = "Remove pull requests with deleted remote branches")]
         public bool Prune { get; }
 
+        [Option("--shell", Description = "Shell out to git for ls-remote and fetch")]
+        public bool Shell { get; }
+
         void OnExecute()
         {
             var repoPath = Repository.Discover(TargetDir);
@@ -39,7 +42,7 @@ namespace GitPullRequest
                 return;
             }
 
-            var gitService = new GitService();
+            var gitService = Shell ? new ShellGitService() : new LibGitService() as IGitService;
             var service = new GitPullRequestService(gitService);
             using (var repo = new Repository(repoPath))
             {
@@ -49,13 +52,21 @@ namespace GitPullRequest
                     return;
                 }
 
-                if (List || All)
+                try
                 {
-                    ListBranches(service, repo);
-                    return;
-                }
+                    if (List || All)
+                    {
+                        ListBranches(service, repo);
+                        return;
+                    }
 
-                BrowsePullRequest(service, repo);
+                    BrowsePullRequest(service, repo);
+                }
+                catch (LibGit2SharpException e)
+                {
+                    Console.WriteLine($"{e.GetType()}: {e.Message}");
+                    Console.WriteLine("Please try again using the --shell option to use native git authentication");
+                }
             }
         }
 

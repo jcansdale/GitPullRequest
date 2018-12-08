@@ -24,7 +24,7 @@ public class GitPullRequestServiceTests
             {
                 AddRemoteReferences(repo, remote, new Dictionary<string, string> { { referenceCanonicalName, "refSha" } });
             }
-            GitPullRequestService target = CreateGitPullRequestService();
+            var target = CreateGitPullRequestService();
             var gitHubRepositories = target.GetGitRepositories(repo);
 
             var compareUrl = target.FindCompareUrl(gitHubRepositories, repo);
@@ -99,7 +99,7 @@ public class GitPullRequestServiceTests
 
     static GitPullRequestService CreateGitPullRequestService()
     {
-        var gitService = new GitService();
+        var gitService = new LibGitService();
         return new GitPullRequestService(gitService);
     }
 
