@@ -1,45 +1,45 @@
 ﻿using System.Linq;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using LibGit2Sharp;
-using LibGit2Sharp.Handlers;
-using Microsoft.Alm.Authentication;
 
 namespace GitPullRequest.Services
 {
     public class GitPullRequestService
     {
-        public IDictionary<string, GitHubRepository> GetGitHubRepositories(IRepository repo)
+        readonly IGitService gitService;
+
+        public GitPullRequestService(IGitService gitService)
         {
-            var gitHubRepositories = new Dictionary<string, GitHubRepository>();
+            this.gitService = gitService;
+        }
+
+        public IDictionary<string, RemoteRepository> GetGitRepositories(IRepository repo)
+        {
+            var gitRepositories = new Dictionary<string, RemoteRepository>();
             foreach (var remote in repo.Network.Remotes)
             {
                 var remoteName = remote.Name;
-                gitHubRepositories[remoteName] = GetGitHubRepository(repo, remoteName);
+                var hostedRepository = GitRepositoryFactory.Create(gitService, repo, remote.Name);
+                if (hostedRepository == null)
+                {
+                    continue;
+                }
+
+                gitRepositories[remoteName] = hostedRepository;
             }
 
-            return gitHubRepositories;
+            return gitRepositories;
         }
 
-        public GitHubRepository GetGitHubRepository(IRepository repo, string remoteName)
-        {
-            return new GitHubRepository
-            {
-                RemoteName = remoteName,
-                Url = GetRepositoryUrl(repo, remoteName),
-                References = GetReferences(repo, remoteName)
-            };
-        }
-
-        public IList<(GitHubRepository Repository, int Number, bool IsDeleted)> FindPullRequests(
-            IDictionary<string, GitHubRepository> gitHubRepositories, Branch branch)
+        public IList<(RemoteRepository Repository, int Number, bool IsDeleted)> FindPullRequests(
+            IDictionary<string, RemoteRepository> gitRepositories, Branch branch)
         {
             var isDeleted = false;
             string sha = null;
             if (branch.IsTracking)
             {
-                var gitHubRepository = gitHubRepositories[branch.RemoteName];
-                var references = gitHubRepository.References;
+                var gitRepository = gitRepositories[branch.RemoteName];
+                var references = gitRepository.References;
                 isDeleted = !references.TryGetValue(branch.UpstreamBranchCanonicalName, out sha);
             }
 
@@ -48,27 +48,21 @@ namespace GitPullRequest.Services
                 sha = branch.Tip.Sha;
             }
 
-            return FindPullRequestsForSha(gitHubRepositories, sha)
+            return FindPullRequestsForSha(gitRepositories, sha)
                 .Select(pr => (pr.Repository, pr.Number, isDeleted)).ToList();
         }
 
-        public IList<(GitHubRepository Repository, int Number)> FindPullRequestsForSha(
-            IDictionary<string, GitHubRepository> gitHubRepositories, string sha)
+        public IList<(RemoteRepository Repository, int Number)> FindPullRequestsForSha(
+            IDictionary<string, RemoteRepository> gitRepositories, string sha)
         {
-            return gitHubRepositories
+            return gitRepositories
                 .SelectMany(r => r.Value.References, (x, y) => (Repository: x.Value, Reference: y))
-                .Where(kv => kv.Reference.Value == sha)
-                .Select(kv => (kv.Repository, Number: FindPullRequestForCanonicalName(kv.Reference.Key)))
+                .Where(kv => kv.Reference.Value == sha).Select(kv => (kv.Repository, Number: kv.Repository.FindPullRequestForCanonicalName(kv.Reference.Key)))
                 .Where(pr => pr.Number != -1)
                 .ToList();
         }
 
-        public string GetPullRequestUrl(GitHubRepository gitHubRepository, int number)
-        {
-            return $"{gitHubRepository.Url}/pull/{number}";
-        }
-
-        public string FindCompareUrl(IDictionary<string, GitHubRepository> gitHubRepositories, IRepository repo)
+        public string FindCompareUrl(IDictionary<string, RemoteRepository> gitRepositories, IRepository repo)
         {
             var branch = repo.Head;
             if (!branch.IsTracking)
@@ -77,14 +71,14 @@ namespace GitPullRequest.Services
             }
 
             var upstreamBranchCanonicalName = branch.UpstreamBranchCanonicalName;
-            var gitHubRepository = gitHubRepositories[branch.RemoteName];
-            if (!gitHubRepository.References.ContainsKey(upstreamBranchCanonicalName))
+            var gitRepository = gitRepositories[branch.RemoteName];
+            if (!gitRepository.References.ContainsKey(upstreamBranchCanonicalName))
             {
                 return null;
             }
 
             var friendlyName = GetFriendlyName(upstreamBranchCanonicalName);
-            return $"{gitHubRepository.Url}/compare/{friendlyName}";
+            return gitRepository.GetCompareUrl(friendlyName);
         }
 
         static string GetFriendlyName(string canonicalName)
@@ -96,53 +90,6 @@ namespace GitPullRequest.Services
             }
 
             return canonicalName.Substring(prefix.Length);
-        }
-
-        static int FindPullRequestForCanonicalName(string canonicalName)
-        {
-            var match = Regex.Match(canonicalName, "^refs/pull/([0-9]+)/head$");
-            if (match.Success && int.TryParse(match.Groups[1].Value, out int number))
-            {
-                return number;
-            }
-
-            return -1;
-        }
-
-        static string GetRepositoryUrl(IRepository repo, string remoteName)
-        {
-            var url = repo.Network.Remotes[remoteName].Url;
-            var postfix = ".git";
-            if (url.EndsWith(postfix))
-            {
-                url = url.Substring(0, url.Length - postfix.Length);
-            }
-
-            return url;
-        }
-
-        static IDictionary<string, string> GetReferences(IRepository repo, string remoteName)
-        {
-            var secrets = new SecretStore("git");
-            var auth = new BasicAuthentication(secrets);
-            var creds = auth.GetCredentials(new TargetUri("https://github.com"));
-
-            CredentialsHandler credentialsHandler =
-                (url, user, cred) => new UsernamePasswordCredentials
-                {
-                    Username = creds.Username,
-                    Password = creds.Password
-                };
-
-            var dictionary = new Dictionary<string, string>();
-            var remote = repo.Network.Remotes[remoteName];
-            var refs = repo.Network.ListReferences(remote, credentialsHandler);
-            foreach (var reference in refs)
-            {
-                dictionary[reference.CanonicalName] = reference.TargetIdentifier;
-            }
-
-            return dictionary;
         }
     }
 }

@@ -31,6 +31,9 @@ namespace GitPullRequest
         [Option("--prune", Description = "Remove pull requests with deleted remote branches")]
         public bool Prune { get; }
 
+        [Option("--shell", Description = "Shell out to git for ls-remote and fetch")]
+        public bool Shell { get; }
+
         void OnExecute()
         {
             var repoPath = Repository.Discover(TargetDir);
@@ -40,7 +43,8 @@ namespace GitPullRequest
                 return;
             }
 
-            var service = new GitPullRequestService();
+            var gitService = Shell ? new ShellGitService() : new LibGitService() as IGitService;
+            var service = new GitPullRequestService(gitService);
             using (var repo = new Repository(repoPath))
             {
                 if (Prune)
@@ -49,30 +53,39 @@ namespace GitPullRequest
                     return;
                 }
 
-                if (List || All)
+                try
                 {
-                    ListBranches(service, repo);
-                    return;
-                }
+                    if (List || All)
+                    {
+                        ListBranches(service, repo);
+                        return;
+                    }
 
-                BrowsePullRequest(service, repo);
+                    BrowsePullRequest(service, repo);
+                }
+                catch (LibGit2SharpException e)
+                {
+                    Console.WriteLine($"{e.GetType()}: {e.Message}");
+                    Console.WriteLine("Please try again using the --shell option to use native git authentication");
+                }
             }
         }
 
         void BrowsePullRequest(GitPullRequestService service, Repository repo)
         {
-            var gitHubRepositories = service.GetGitHubRepositories(repo);
+            var gitRepositories = service.GetGitRepositories(repo);
 
-            var prs = (PullRequestNumber == 0 ? service.FindPullRequests(gitHubRepositories, repo.Head) :
+            var prs = (PullRequestNumber == 0 ? service.FindPullRequests(gitRepositories, repo.Head) :
                 repo.Branches
-                    .SelectMany(b => service.FindPullRequests(gitHubRepositories, b))
-                    .Where(pr => pr.Number == PullRequestNumber)).ToList();
+                    .SelectMany(b => service.FindPullRequests(gitRepositories, b))
+                    .Where(pr => pr.Number == PullRequestNumber)
+                    .Distinct()).ToList();
 
             if (prs.Count > 0)
             {
                 foreach (var pr in prs)
                 {
-                    var url = service.GetPullRequestUrl(pr.Repository, pr.Number);
+                    var url = pr.Repository.GetPullRequestUrl(pr.Number);
                     Console.WriteLine(url);
                     TryBrowse(url);
                 }
@@ -86,7 +99,7 @@ namespace GitPullRequest
                 return;
             }
 
-            var compareUrl = service.FindCompareUrl(gitHubRepositories, repo);
+            var compareUrl = service.FindCompareUrl(gitRepositories, repo);
             if (compareUrl != null)
             {
                 Console.WriteLine(compareUrl);
@@ -99,10 +112,10 @@ namespace GitPullRequest
 
         void ListBranches(GitPullRequestService service, Repository repo)
         {
-            var gitHubRepositories = service.GetGitHubRepositories(repo);
+            var gitRepositories = service.GetGitRepositories(repo);
             var prs = repo.Branches
                 .Where(b => All || !b.IsRemote)
-                .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
+                .SelectMany(b => service.FindPullRequests(gitRepositories, b), (b, p) => (Branch: b, PullRequest: p))
                 .Where(bp => PullRequestNumber == 0 || bp.PullRequest.Number == PullRequestNumber)
                 .OrderBy(bp => bp.Branch.IsRemote)
                 .ThenBy(bp => bp.PullRequest.Number)
@@ -125,7 +138,8 @@ namespace GitPullRequest
                 var isHead = bp.Branch.IsCurrentRepositoryHead ? "* " : "  ";
                 var remotePrefix = bp.PullRequest.Repository.RemoteName != "origin" ? bp.PullRequest.Repository.RemoteName : "";
 
-                var postfix = bp.PullRequest.IsDeleted ? "x " : "" + bp.Branch.RemoteName != "origin" ? bp.Branch.RemoteName : "";
+                var branchRemoteName = bp.Branch.RemoteName ?? "";
+                var postfix = (bp.PullRequest.IsDeleted ? "x " : "") + (branchRemoteName != "origin" ? branchRemoteName : "");
                 if (postfix.Length > 0)
                 {
                     postfix = $" ({postfix.TrimEnd()})";
@@ -137,7 +151,7 @@ namespace GitPullRequest
 
         void PruneBranches(GitPullRequestService service, Repository repo)
         {
-            var gitHubRepositories = service.GetGitHubRepositories(repo);
+            var gitHubRepositories = service.GetGitRepositories(repo);
             var prs = repo.Branches
                 .Where(b => !b.IsRemote)
                 .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
