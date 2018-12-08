@@ -6,9 +6,9 @@ namespace GitPullRequest.Services
 {
     public class GitPullRequestService
     {
-        readonly GitService gitService;
+        readonly IGitService gitService;
 
-        public GitPullRequestService(GitService gitService)
+        public GitPullRequestService(IGitService gitService)
         {
             this.gitService = gitService;
         }

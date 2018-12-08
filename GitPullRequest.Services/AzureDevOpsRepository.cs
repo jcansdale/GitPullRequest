@@ -8,7 +8,7 @@ namespace GitPullRequest.Services
 {
     internal class AzureDevOpsRepository : RemoteRepository
     {
-        public AzureDevOpsRepository(GitService gitService, IRepository repo, string remoteName)
+        public AzureDevOpsRepository(IGitService gitService, IRepository repo, string remoteName)
             : base(gitService, repo, remoteName)
         {
         }
