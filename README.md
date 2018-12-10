@@ -12,7 +12,7 @@ To browse or create a pull request:
 git pr
 ```
 
-If there is a pull request associated with the current branch is will be opened in the
+If there is a pull request associated with the current branch it will be opened in the
 default browser. If there is a remote branch but no pull request, the compare/create pull
 request page will be opened.
 
