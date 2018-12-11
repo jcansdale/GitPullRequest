@@ -49,7 +49,7 @@ namespace GitPullRequest.Services
             }
             if (needsFetch)
             {
-                GitService.Fetch(repo, remoteName, $"+refs/pull/*/merge:{GetPullRequestRefName(remoteName, "*")}");
+                GitService.Fetch(repo, remoteName, new[] { $"+refs/pull/*/merge:{GetPullRequestRefName(remoteName, "*")}" }, false);
             }
 
             // Now that we know the data is available we can go through and reset our PR refs to point to one commit before the merge commit

@@ -40,12 +40,12 @@ namespace GitPullRequest.Services
             return dictionary;
         }
 
-        public void Fetch(IRepository repo, string remoteName, string refSpec)
+        public void Fetch(IRepository repo, string remoteName, string[] refSpecs, bool prune)
         {
             var startInfo = new ProcessStartInfo
             {
                 FileName = "git",
-                Arguments = $"fetch {remoteName} {refSpec}",
+                Arguments = $"fetch {remoteName} {string.Join(" ", refSpecs)}" + (prune ? " --prune" : ""),
                 WorkingDirectory = repo.Info.WorkingDirectory,
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
