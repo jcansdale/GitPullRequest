@@ -37,15 +37,10 @@ namespace GitPullRequest.Services
             foreach (var reference in refs)
             {
                 var (targetIdentifier, canonicalName) = (reference.Value, reference.Key);
-                dictionary[canonicalName] = GetTipForReference(repo, canonicalName, targetIdentifier);
+                dictionary[canonicalName] = targetIdentifier;
             }
 
             return dictionary;
-        }
-
-        protected virtual string GetTipForReference(IRepository repo, string canonicalName, string targetIdentifier)
-        {
-            return targetIdentifier;
         }
     }
 }
