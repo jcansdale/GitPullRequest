@@ -27,7 +27,17 @@ namespace GitPullRequest.Services
         public void Fetch(IRepository repo, string remoteName, string refSpec)
         {
             var credentialsHandler = CreateCredentialsHandler(repo, remoteName);
-            repo.Network.Fetch(remoteName, new[] { refSpec }, new FetchOptions { CredentialsProvider = credentialsHandler });
+            ProgressHandler progressHandler = text =>
+            {
+                Console.Write(text);
+                return true;
+            };
+
+            repo.Network.Fetch(remoteName, new[] { refSpec }, new FetchOptions
+            {
+                CredentialsProvider = credentialsHandler,
+                OnProgress = progressHandler
+            });
         }
 
         static CredentialsHandler CreateCredentialsHandler(IRepository repo, string remoteName)
