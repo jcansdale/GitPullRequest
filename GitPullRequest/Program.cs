@@ -166,6 +166,8 @@ namespace GitPullRequest
                 .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
                 .Where(bp => bp.PullRequest.IsDeleted)
                 .Where(bp => PullRequestNumber == 0 || bp.PullRequest.Number == PullRequestNumber)
+                .GroupBy(bp => bp.Branch)
+                .Select(g => g.First()) // Select only one PR for each branch
                 .ToList();
 
             if (prs.Count == 0)
