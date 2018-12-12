@@ -36,7 +36,8 @@ namespace GitPullRequest.Services
             repo.Network.Fetch(remoteName, refSpecs, new FetchOptions
             {
                 CredentialsProvider = credentialsHandler,
-                OnProgress = progressHandler
+                OnProgress = progressHandler,
+                Prune = prune
             });
         }
 
