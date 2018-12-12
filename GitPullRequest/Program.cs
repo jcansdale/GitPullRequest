@@ -25,8 +25,8 @@ namespace GitPullRequest
         [Option("--list", Description = "List local branches with associated pull requests")]
         public bool List { get; }
 
-        [Option("--all", Description = "List all branches with associated pull requests")]
-        public bool All { get; }
+        [Option("--remote", Description = "List remote branches with associated pull requests")]
+        public string Remote { get; }
 
         [Option("--prune", Description = "Remove pull requests with deleted remote branches")]
         public bool Prune { get; }
@@ -55,9 +55,9 @@ namespace GitPullRequest
 
                 try
                 {
-                    if (List || All)
+                    if (List || Remote != null)
                     {
-                        ListBranches(service, repo);
+                        ListBranches(service, repo, Remote);
                         return;
                     }
 
@@ -110,11 +110,11 @@ namespace GitPullRequest
             Console.WriteLine("Couldn't find pull request or remote branch");
         }
 
-        void ListBranches(GitPullRequestService service, Repository repo)
+        void ListBranches(GitPullRequestService service, Repository repo, string remoteName)
         {
             var gitRepositories = service.GetGitRepositories(repo);
             var prs = repo.Branches
-                .Where(b => All || !b.IsRemote)
+                .Where(b => remoteName == null && !b.IsRemote || remoteName != null && b.IsRemote && b.RemoteName == remoteName)
                 .SelectMany(b => service.FindPullRequests(gitRepositories, b), (b, p) => (Branch: b, PullRequest: p))
                 .Where(bp => PullRequestNumber == 0 || bp.PullRequest.Number == PullRequestNumber)
                 .OrderBy(bp => bp.Branch.IsRemote)
@@ -135,6 +135,15 @@ namespace GitPullRequest
 
             foreach (var bp in prs)
             {
+                if (remoteName != null &&
+                    bp.Branch.IsRemote &&
+                    bp.Branch.RemoteName != bp.PullRequest.Repository.RemoteName &&
+                    bp.PullRequest.Repository.References.ContainsKey(bp.Branch.UpstreamBranchCanonicalName))
+                {
+                    // Ignore branches forked from parent repository
+                    continue;
+                }
+
                 var isHead = bp.Branch.IsCurrentRepositoryHead ? "* " : "  ";
                 var remotePrefix = bp.PullRequest.Repository.RemoteName != "origin" ? bp.PullRequest.Repository.RemoteName : "";
 
