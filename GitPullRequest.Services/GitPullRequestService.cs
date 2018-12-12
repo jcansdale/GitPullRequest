@@ -36,7 +36,7 @@ namespace GitPullRequest.Services
         {
             var isDeleted = false;
             string sha = null;
-            if (branch.IsTracking)
+            if (branch.IsTracking || branch.IsRemote)
             {
                 var gitRepository = gitRepositories[branch.RemoteName];
                 var references = gitRepository.References;

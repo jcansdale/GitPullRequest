@@ -53,7 +53,7 @@ namespace GitPullRequest.Services
             }
 
             // Now that we know the data is available we can go through and reset our PR refs to point to one commit before the merge commit
-            var pullRequestRefs = remoteRefs.Where(k => k.Key.StartsWith("refs/pull/", StringComparison.OrdinalIgnoreCase)).ToList();
+            var pullRequestRefs = remoteRefs.Where(k => FindPullRequestForCanonicalName(k.Key) != -1).ToList();
             foreach (var kvp in pullRequestRefs)
             {
                 // Get the commit at HEAD^1 as Azure DevOps automatically adds a merge commit on the server

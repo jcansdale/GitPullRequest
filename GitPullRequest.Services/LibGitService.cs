@@ -26,10 +26,17 @@ namespace GitPullRequest.Services
 
         public void Fetch(IRepository repo, string remoteName, string[] refSpecs, bool prune)
         {
+            var credentialsHandler = CreateCredentialsHandler(repo, remoteName);
+            ProgressHandler progressHandler = text =>
+            {
+                Console.Write(text);
+                return true;
+            };
+
             repo.Network.Fetch(remoteName, refSpecs, new FetchOptions
             {
-                CredentialsProvider = CreateCredentialsHandler(repo, remoteName),
-                Prune = prune
+                CredentialsProvider = credentialsHandler,
+                OnProgress = progressHandler
             });
         }
 
