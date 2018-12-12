@@ -15,17 +15,22 @@ namespace GitPullRequest.Services
 
         public IDictionary<string, RemoteRepository> GetGitRepositories(IRepository repo)
         {
+            // Only consider one remote per URL and prioritize ones named "origin"
+            var remotes = repo.Network.Remotes
+                .GroupBy(r => r.Url)
+                .Select(g => g
+                    .OrderBy(r => r.Name == "origin" ? 0 : 1)
+                    .First());
+
             var gitRepositories = new Dictionary<string, RemoteRepository>();
-            foreach (var remote in repo.Network.Remotes)
+            foreach (var remote in remotes)
             {
                 var remoteName = remote.Name;
                 var hostedRepository = GitRepositoryFactory.Create(gitService, repo, remote.Name);
-                if (hostedRepository == null)
+                if (hostedRepository != null)
                 {
-                    continue;
+                    gitRepositories[remoteName] = hostedRepository;
                 }
-
-                gitRepositories[remoteName] = hostedRepository;
             }
 
             return gitRepositories;
