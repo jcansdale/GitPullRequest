@@ -34,12 +34,13 @@ namespace GitPullRequest.Services
 
         protected override string GetTipForReference(IRepository repo, string canonicalName, string targetIdentifier)
         {
-            if (canonicalName.StartsWith("refs/pull/", StringComparison.OrdinalIgnoreCase))
+            if (FindPullRequestForCanonicalName(canonicalName) != -1)
             {
                 // Get the commit at HEAD^1 as Azure DevOps automatically adds a merge commit on the server
                 var commit = repo.Commits.QueryBy(new CommitFilter() { IncludeReachableFrom = targetIdentifier }).Skip(1).FirstOrDefault();
                 return commit.Sha;
             }
+
             return targetIdentifier;
         }
 
