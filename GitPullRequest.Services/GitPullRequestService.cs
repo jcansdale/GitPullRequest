@@ -15,15 +15,8 @@ namespace GitPullRequest.Services
 
         public IDictionary<string, RemoteRepository> GetGitRepositories(IRepository repo)
         {
-            // Only consider one remote per URL and prioritize ones named "origin"
-            var remotes = repo.Network.Remotes
-                .GroupBy(r => r.Url)
-                .Select(g => g
-                    .OrderBy(r => r.Name == "origin" ? 0 : 1)
-                    .First());
-
             var gitRepositories = new Dictionary<string, RemoteRepository>();
-            foreach (var remote in remotes)
+            foreach (var remote in repo.Network.Remotes)
             {
                 var remoteName = remote.Name;
                 var hostedRepository = GitRepositoryFactory.Create(gitService, repo, remote.Name);
@@ -60,8 +53,15 @@ namespace GitPullRequest.Services
         public IList<(RemoteRepository Repository, int Number)> FindPullRequestsForSha(
             IDictionary<string, RemoteRepository> gitRepositories, string sha)
         {
-            return gitRepositories
-                .SelectMany(r => r.Value.References, (x, y) => (Repository: x.Value, Reference: y))
+            // Only consider one repository per URL and prioritize ones with a remote named "origin"
+            var uniqueRepositories = gitRepositories.Values
+                .GroupBy(r => r.Url)
+                .Select(g => g
+                    .OrderBy(r => r.RemoteName == "origin" ? 0 : 1)
+                    .First());
+
+            return uniqueRepositories
+                .SelectMany(r => r.References, (x, y) => (Repository: x, Reference: y))
                 .Where(kv => kv.Reference.Value == sha).Select(kv => (kv.Repository, Number: kv.Repository.FindPullRequestForCanonicalName(kv.Reference.Key)))
                 .Where(pr => pr.Number != -1)
                 .ToList();
