@@ -73,11 +73,11 @@ namespace GitPullRequest
 
         void BrowsePullRequest(GitPullRequestService service, Repository repo)
         {
-            var gitRepositories = service.GetGitRepositories(repo);
+            var remoteRepositoryCache = service.GetRemoteRepositoryCache(repo);
 
-            var prs = (PullRequestNumber == 0 ? service.FindPullRequests(gitRepositories, repo.Head) :
+            var prs = (PullRequestNumber == 0 ? service.FindPullRequests(remoteRepositoryCache, repo.Head) :
                 repo.Branches
-                    .SelectMany(b => service.FindPullRequests(gitRepositories, b))
+                    .SelectMany(b => service.FindPullRequests(remoteRepositoryCache, b))
                     .Where(pr => pr.Number == PullRequestNumber)
                     .Distinct()).ToList();
 
@@ -99,7 +99,7 @@ namespace GitPullRequest
                 return;
             }
 
-            var compareUrl = service.FindCompareUrl(gitRepositories, repo);
+            var compareUrl = service.FindCompareUrl(remoteRepositoryCache, repo);
             if (compareUrl != null)
             {
                 Console.WriteLine(compareUrl);
@@ -112,7 +112,7 @@ namespace GitPullRequest
 
         void ListBranches(GitPullRequestService service, Repository repo, string remoteName)
         {
-            var gitRepositories = service.GetGitRepositories(repo);
+            var gitRepositories = service.GetRemoteRepositoryCache(repo);
             var prs = repo.Branches
                 .Where(b => remoteName == null && !b.IsRemote || remoteName != null && b.IsRemote && b.RemoteName == remoteName)
                 .SelectMany(b => service.FindPullRequests(gitRepositories, b), (b, p) => (Branch: b, PullRequest: p))
@@ -160,7 +160,7 @@ namespace GitPullRequest
 
         void PruneBranches(GitPullRequestService service, Repository repo)
         {
-            var gitHubRepositories = service.GetGitRepositories(repo);
+            var gitHubRepositories = service.GetRemoteRepositoryCache(repo);
             var prs = repo.Branches
                 .Where(b => !b.IsRemote)
                 .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
