@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Diagnostics;
 using System.ComponentModel;
+using System.Collections.Generic;
 using LibGit2Sharp;
 using GitPullRequest.Services;
 using McMaster.Extensions.CommandLineUtils;
@@ -74,10 +75,11 @@ namespace GitPullRequest
         void BrowsePullRequest(GitPullRequestService service, Repository repo)
         {
             var remoteRepositoryCache = service.GetRemoteRepositoryCache(repo);
+            var upstreamRepositoires = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
 
-            var prs = (PullRequestNumber == 0 ? service.FindPullRequests(remoteRepositoryCache, repo.Head) :
+            var prs = (PullRequestNumber == 0 ? service.FindPullRequests(remoteRepositoryCache, upstreamRepositoires, repo.Head) :
                 repo.Branches
-                    .SelectMany(b => service.FindPullRequests(remoteRepositoryCache, b))
+                    .SelectMany(b => service.FindPullRequests(remoteRepositoryCache, upstreamRepositoires, b))
                     .Where(pr => pr.Number == PullRequestNumber)
                     .Distinct()).ToList();
 
@@ -112,10 +114,12 @@ namespace GitPullRequest
 
         void ListBranches(GitPullRequestService service, Repository repo, string remoteName)
         {
-            var gitRepositories = service.GetRemoteRepositoryCache(repo);
+            var remoteRepositoryCache = service.GetRemoteRepositoryCache(repo);
+            var upstreamRepositoires = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
+
             var prs = repo.Branches
                 .Where(b => remoteName == null && !b.IsRemote || remoteName != null && b.IsRemote && b.RemoteName == remoteName)
-                .SelectMany(b => service.FindPullRequests(gitRepositories, b), (b, p) => (Branch: b, PullRequest: p))
+                .SelectMany(b => service.FindPullRequests(remoteRepositoryCache, upstreamRepositoires, b), (b, p) => (Branch: b, PullRequest: p))
                 .Where(bp => PullRequestNumber == 0 || bp.PullRequest.Number == PullRequestNumber)
                 .OrderBy(bp => bp.Branch.IsRemote)
                 .ThenBy(bp => bp.PullRequest.Number)
@@ -160,10 +164,12 @@ namespace GitPullRequest
 
         void PruneBranches(GitPullRequestService service, Repository repo)
         {
-            var gitHubRepositories = service.GetRemoteRepositoryCache(repo);
+            var remoteRepositoryCache = service.GetRemoteRepositoryCache(repo);
+            var upstreamRepositoires = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
+
             var prs = repo.Branches
                 .Where(b => !b.IsRemote)
-                .SelectMany(b => service.FindPullRequests(gitHubRepositories, b), (b, p) => (Branch: b, PullRequest: p))
+                .SelectMany(b => service.FindPullRequests(remoteRepositoryCache, upstreamRepositoires, b), (b, p) => (Branch: b, PullRequest: p))
                 .Where(bp => bp.PullRequest.IsDeleted)
                 .Where(bp => PullRequestNumber == 0 || bp.PullRequest.Number == PullRequestNumber)
                 .GroupBy(bp => bp.Branch)
@@ -188,6 +194,18 @@ namespace GitPullRequest
                     repo.Branches.Remove(bp.Branch);
                 }
             }
+        }
+
+        static IList<RemoteRepository> CreateUpstreamRepositoires(RemoteRepositoryCache remoteRepositoryCache, IRepository repo)
+        {
+            // Only consider one repository per URL and prioritize ones with a remote named "origin"
+            return repo.Network.Remotes
+                .Select(r => remoteRepositoryCache[r.Name])
+                .GroupBy(r => r.Url)
+                .Select(g => g
+                    .OrderBy(r => r.RemoteName == "origin" ? 0 : 1)
+                    .First())
+                .ToList();
         }
 
         bool TryBrowse(string url)

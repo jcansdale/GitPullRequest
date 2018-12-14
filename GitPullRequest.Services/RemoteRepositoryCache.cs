@@ -1,20 +1,37 @@
-﻿using LibGit2Sharp;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using LibGit2Sharp;
 
 namespace GitPullRequest.Services
 {
-    public class RemoteRepositoryCache : Dictionary<string, RemoteRepository>
+    public class RemoteRepositoryCache
     {
+        readonly IGitService gitService;
+        readonly IRepository repo;
+        readonly Dictionary<string, RemoteRepository> cache;
+
         public RemoteRepositoryCache(IGitService gitService, IRepository repo)
         {
-            foreach (var remote in repo.Network.Remotes)
+            this.gitService = gitService;
+            this.repo = repo;
+            cache = new Dictionary<string, RemoteRepository>();
+        }
+
+        public RemoteRepository this[string remoteName]
+        {
+            get
             {
-                var remoteName = remote.Name;
-                var hostedRepository = GitRepositoryFactory.Create(gitService, repo, remote.Name);
-                if (hostedRepository != null)
+                if (!cache.ContainsKey(remoteName))
                 {
-                    this[remoteName] = hostedRepository;
+                    var remoteRepository = GitRepositoryFactory.Create(gitService, repo, remoteName);
+                    if (remoteRepository != null)
+                    {
+                        cache[remoteName] = remoteRepository;
+                    }
+
+                    cache[remoteName] = remoteRepository;
                 }
+
+                return cache[remoteName];
             }
         }
     }

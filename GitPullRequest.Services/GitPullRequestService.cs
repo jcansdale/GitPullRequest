@@ -19,7 +19,7 @@ namespace GitPullRequest.Services
         }
 
         public IList<(RemoteRepository Repository, int Number, bool IsDeleted)> FindPullRequests(
-            RemoteRepositoryCache remoteRepositoryCache, Branch branch)
+            RemoteRepositoryCache remoteRepositoryCache, IList<RemoteRepository> upstreamRepositories, Branch branch)
         {
             var isDeleted = false;
             string sha = null;
@@ -35,21 +35,14 @@ namespace GitPullRequest.Services
                 sha = branch.Tip.Sha;
             }
 
-            return FindPullRequestsForSha(remoteRepositoryCache, sha)
+            return FindPullRequestsForSha(remoteRepositoryCache, upstreamRepositories, sha)
                 .Select(pr => (pr.Repository, pr.Number, isDeleted)).ToList();
         }
 
         public IList<(RemoteRepository Repository, int Number)> FindPullRequestsForSha(
-            RemoteRepositoryCache remoteRepositoryCache, string sha)
+            RemoteRepositoryCache remoteRepositoryCache, ICollection<RemoteRepository> upstreamRepositories, string sha)
         {
-            // Only consider one repository per URL and prioritize ones with a remote named "origin"
-            var uniqueRepositories = remoteRepositoryCache.Values
-                .GroupBy(r => r.Url)
-                .Select(g => g
-                    .OrderBy(r => r.RemoteName == "origin" ? 0 : 1)
-                    .First());
-
-            return uniqueRepositories
+            return upstreamRepositories
                 .SelectMany(r => r.References, (x, y) => (Repository: x, Reference: y))
                 .Where(kv => kv.Reference.Value == sha).Select(kv => (kv.Repository, Number: kv.Repository.FindPullRequestForCanonicalName(kv.Reference.Key)))
                 .Where(pr => pr.Number != -1)

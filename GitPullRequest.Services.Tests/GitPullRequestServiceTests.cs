@@ -40,9 +40,10 @@ public class GitPullRequestServiceTests
         {
             var repo = CreateRepository("sha", null, null, Array.Empty<Remote>());
             var target = CreateGitPullRequestService();
-            var gitHubRepositories = target.GetRemoteRepositoryCache(repo);
+            var remoteRepositoryCache = target.GetRemoteRepositoryCache(repo);
+            var upstreamRepositories = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
 
-            var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
+            var prs = target.FindPullRequests(remoteRepositoryCache, upstreamRepositories, repo.Head);
 
             Assert.That(prs, Is.Empty);
         }
@@ -62,9 +63,10 @@ public class GitPullRequestServiceTests
                     { $"refs/pull/{number}/head", prSha }
                 });
             var target = CreateGitPullRequestService();
-            var gitHubRepositories = target.GetRemoteRepositoryCache(repo);
+            var remoteRepositoryCache = target.GetRemoteRepositoryCache(repo);
+            var upstreamRepositories = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
 
-            var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
+            var prs = target.FindPullRequests(remoteRepositoryCache, upstreamRepositories, repo.Head);
 
             var pr = prs.FirstOrDefault();
             Assert.That(pr.Repository.RemoteName, Is.EqualTo(remoteName));
@@ -87,8 +89,11 @@ public class GitPullRequestServiceTests
             AddRemoteReferences(repo, upstreamRemote, new Dictionary<string, string> { { $"refs/pull/{number}/head", prSha } });
             var target = CreateGitPullRequestService();
             var gitHubRepositories = target.GetRemoteRepositoryCache(repo);
+            var upstreamRepositories = repo.Network.Remotes
+                .Select(r => gitHubRepositories[r.Name])
+                .ToList();
 
-            var prs = target.FindPullRequests(gitHubRepositories, repo.Head);
+            var prs = target.FindPullRequests(gitHubRepositories, upstreamRepositories, repo.Head);
 
             var pr = prs.FirstOrDefault();
             Assert.That(pr.Repository.Url, Is.EqualTo(upstreamUrl));
@@ -121,6 +126,13 @@ public class GitPullRequestServiceTests
         remote.Name.Returns(name);
         remote.Url.Returns(url);
         return remote;
+    }
+
+    static IList<RemoteRepository> CreateUpstreamRepositoires(RemoteRepositoryCache remoteRepositoryCache, IRepository repo)
+    {
+        return repo.Network.Remotes
+            .Select(r => remoteRepositoryCache[r.Name])
+            .ToList();
     }
 
     static Branch CreateBranch(string sha, string remoteName, string upstreamBranchCanonicalName)
