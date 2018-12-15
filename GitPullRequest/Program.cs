@@ -44,8 +44,7 @@ namespace GitPullRequest
                 return;
             }
 
-            var gitService = Shell ? new ShellGitService() : new LibGitService() as IGitService;
-            var factory = new RemoteRepositoryFactory(gitService);
+            var factory = new RemoteRepositoryFactory(new LibGitService(), new ShellGitService(), Shell);
             var service = new GitPullRequestService(factory);
             using (var repo = new Repository(repoPath))
             {

@@ -5,30 +5,43 @@ namespace GitPullRequest.Services
 {
     public class RemoteRepositoryFactory
     {
-        readonly IGitService gitService;
+        readonly IGitService libGitService;
+        readonly IGitService shellGitService;
+        readonly bool shell;
 
-        public RemoteRepositoryFactory(IGitService gitService = null)
+        /// <summary>
+        /// The default <see cref="IGitService"/> implementation or null for automatic.
+        /// </summary>
+        /// <param name="defaultGitService"></param>
+        public RemoteRepositoryFactory(
+            IGitService libGitService,
+            IGitService shellGitService,
+            bool shell = false)
         {
-            this.gitService = gitService;
+            this.libGitService = libGitService;
+            this.shellGitService = shellGitService;
+            this.shell = shell;
         }
 
         public RemoteRepository Create(IRepository repo, string remoteName)
         {
+            var gitService = shell ? shellGitService : libGitService;
+
             var url = repo.Network.Remotes[remoteName].Url;
             if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri))
             {
-                return null;
+                throw new NotSupportedException($"Unknown URI '{url}' for {remoteName}");
             }
 
             if (!uri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) &&
                 !uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
             {
-                return null;
+                gitService = shellGitService;
             }
 
             if (uri.GetLeftPart(UriPartial.Authority).Contains("@"))
             {
-                return null;
+                gitService = shellGitService;
             }
 
             if (uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
@@ -39,6 +52,7 @@ namespace GitPullRequest.Services
             {
                 return new AzureDevOpsRepository(gitService, repo, remoteName);
             }
+
             throw new NotSupportedException("Sorry, your git host is not supported!");
         }
     }
