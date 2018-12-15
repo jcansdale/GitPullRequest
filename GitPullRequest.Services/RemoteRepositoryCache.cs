@@ -5,13 +5,13 @@ namespace GitPullRequest.Services
 {
     public class RemoteRepositoryCache
     {
-        readonly IGitService gitService;
+        readonly RemoteRepositoryFactory remoteRepositoryFactory;
         readonly IRepository repo;
         readonly Dictionary<string, RemoteRepository> cache;
 
-        public RemoteRepositoryCache(IGitService gitService, IRepository repo)
+        public RemoteRepositoryCache(RemoteRepositoryFactory remoteRepositoryFactory, IRepository repo)
         {
-            this.gitService = gitService;
+            this.remoteRepositoryFactory = remoteRepositoryFactory;
             this.repo = repo;
             cache = new Dictionary<string, RemoteRepository>();
         }
@@ -22,7 +22,7 @@ namespace GitPullRequest.Services
             {
                 if (!cache.ContainsKey(remoteName))
                 {
-                    var remoteRepository = GitRepositoryFactory.Create(gitService, repo, remoteName);
+                    var remoteRepository = remoteRepositoryFactory.Create(repo, remoteName);
                     if (remoteRepository != null)
                     {
                         cache[remoteName] = remoteRepository;

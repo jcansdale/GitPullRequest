@@ -3,9 +3,16 @@ using LibGit2Sharp;
 
 namespace GitPullRequest.Services
 {
-    public static class GitRepositoryFactory
+    public class RemoteRepositoryFactory
     {
-        public static RemoteRepository Create(IGitService gitService, IRepository repo, string remoteName)
+        readonly IGitService gitService;
+
+        public RemoteRepositoryFactory(IGitService gitService = null)
+        {
+            this.gitService = gitService;
+        }
+
+        public RemoteRepository Create(IRepository repo, string remoteName)
         {
             var url = repo.Network.Remotes[remoteName].Url;
             if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri))

@@ -105,7 +105,8 @@ public class GitPullRequestServiceTests
     static GitPullRequestService CreateGitPullRequestService()
     {
         var gitService = new LibGitService();
-        return new GitPullRequestService(gitService);
+        var factory = new RemoteRepositoryFactory(gitService);
+        return new GitPullRequestService(factory);
     }
 
     static IRepository CreateRepository(

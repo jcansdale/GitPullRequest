@@ -6,16 +6,16 @@ namespace GitPullRequest.Services
 {
     public class GitPullRequestService
     {
-        readonly IGitService gitService;
+        readonly RemoteRepositoryFactory remoteRepositoryFactory;
 
-        public GitPullRequestService(IGitService gitService)
+        public GitPullRequestService(RemoteRepositoryFactory remoteRepositoryFactory)
         {
-            this.gitService = gitService;
+            this.remoteRepositoryFactory = remoteRepositoryFactory;
         }
 
         public RemoteRepositoryCache GetRemoteRepositoryCache(IRepository repo)
         {
-            return new RemoteRepositoryCache(gitService, repo);
+            return new RemoteRepositoryCache(remoteRepositoryFactory, repo);
         }
 
         public IList<(RemoteRepository Repository, int Number, bool IsDeleted)> FindPullRequests(
