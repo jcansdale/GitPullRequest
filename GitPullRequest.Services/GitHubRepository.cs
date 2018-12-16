@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using GitHub.Primitives;
 using LibGit2Sharp;
 
 namespace GitPullRequest.Services
@@ -13,12 +14,8 @@ namespace GitPullRequest.Services
         protected override string GetRepositoryUrl(IRepository repo, string remoteName)
         {
             var url = base.GetRepositoryUrl(repo, remoteName);
-            var postfix = ".git";
-            if (url.EndsWith(postfix))
-            {
-                url = url.Substring(0, url.Length - postfix.Length);
-            }
-            return url;
+            var uriString = new UriString(url);
+            return uriString.ToRepositoryUrl()?.ToString() ?? "";
         }
 
         public override int FindPullRequestForCanonicalName(string canonicalName)
