@@ -3,7 +3,7 @@ using LibGit2Sharp;
 
 namespace GitPullRequest.Services
 {
-    internal class GitHubRepository : RemoteRepository
+    public class GitHubRepository : RemoteRepository
     {
         public GitHubRepository(IGitService gitService, IRepository repo, string remoteName)
             : base(gitService, repo, remoteName)
