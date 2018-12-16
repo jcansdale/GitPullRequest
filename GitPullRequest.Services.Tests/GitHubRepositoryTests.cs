@@ -9,6 +9,7 @@ public class GitHubRepositoryTests
     {
         [TestCase("https://github.com/jcansdale/git-pr", "https://github.com/jcansdale/git-pr")]
         [TestCase("git@github.com:jcansdale/GitDiffMargin.git", "https://github.com/jcansdale/GitDiffMargin")]
+        [TestCase(@"c:\source\repo", "file:///c:/source/repo")]
         public void Url(string remoteUrl, string expectUrl)
         {
             var gitService = Substitute.For<IGitService>();
