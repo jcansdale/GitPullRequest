@@ -1,5 +1,6 @@
 ﻿using System;
 using LibGit2Sharp;
+using GitHub.Primitives;
 
 namespace GitPullRequest.Services
 {
@@ -28,27 +29,27 @@ namespace GitPullRequest.Services
             var gitService = shell ? shellGitService : libGitService;
 
             var url = repo.Network.Remotes[remoteName].Url;
-            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri))
-            {
-                throw new NotSupportedException($"Unknown URI '{url}' for {remoteName}");
-            }
 
-            if (!uri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) &&
-                !uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase))
+            var uriString = new UriString(url);
+            if (!uriString.IsHypertextTransferProtocol && !uriString.IsFileUri)
             {
+                // LibGit2Sharp only works with HTTP and file remotes
                 gitService = shellGitService;
             }
 
-            if (uri.GetLeftPart(UriPartial.Authority).Contains("@"))
+            if (Uri.TryCreate(url, UriKind.Absolute, out Uri uri) &&
+                uri.GetLeftPart(UriPartial.Authority).Contains("@"))
             {
+                // LibGit2Sharp doesn't appear to work when a user is specified
                 gitService = shellGitService;
             }
 
-            if (uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+            if (uriString.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
             {
                 return new GitHubRepository(gitService, repo, remoteName);
             }
-            else if (uri.Host.EndsWith(".visualstudio.com", StringComparison.OrdinalIgnoreCase) || uri.Host.Equals("dev.azure.com", StringComparison.OrdinalIgnoreCase))
+            else if (uriString.Host.EndsWith(".visualstudio.com", StringComparison.OrdinalIgnoreCase) ||
+                uriString.Host.Equals("dev.azure.com", StringComparison.OrdinalIgnoreCase))
             {
                 return new AzureDevOpsRepository(gitService, repo, remoteName);
             }
