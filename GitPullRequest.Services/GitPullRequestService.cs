@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using LibGit2Sharp;
 
@@ -13,9 +14,9 @@ namespace GitPullRequest.Services
             this.remoteRepositoryFactory = remoteRepositoryFactory;
         }
 
-        public RemoteRepositoryCache GetRemoteRepositoryCache(IRepository repo)
+        public RemoteRepositoryCache GetRemoteRepositoryCache(IRepository repo, Action<Exception> exceptionLogger)
         {
-            return new RemoteRepositoryCache(remoteRepositoryFactory, repo);
+            return new RemoteRepositoryCache(remoteRepositoryFactory, repo, exceptionLogger);
         }
 
         public IList<(RemoteRepository Repository, int Number, bool IsDeleted)> FindPullRequests(
@@ -25,8 +26,13 @@ namespace GitPullRequest.Services
             string sha = null;
             if (branch.IsTracking || branch.IsRemote)
             {
-                var gitRepository = remoteRepositoryCache[branch.RemoteName];
-                var references = gitRepository.References;
+                var remoteRepository = remoteRepositoryCache.FindRemoteRepository(branch.RemoteName);
+                if (remoteRepository == null)
+                {
+                    return Array.Empty<(RemoteRepository, int, bool)>();
+                }
+
+                var references = remoteRepository.References;
                 isDeleted = !references.TryGetValue(branch.UpstreamBranchCanonicalName, out sha);
             }
 
@@ -58,14 +64,19 @@ namespace GitPullRequest.Services
             }
 
             var upstreamBranchCanonicalName = branch.UpstreamBranchCanonicalName;
-            var gitRepository = remoteRepositoryCache[branch.RemoteName];
-            if (!gitRepository.References.ContainsKey(upstreamBranchCanonicalName))
+            var remoteRepository = remoteRepositoryCache.FindRemoteRepository(branch.RemoteName);
+            if (remoteRepository == null)
+            {
+                return null;
+            }
+
+            if (!remoteRepository.References.ContainsKey(upstreamBranchCanonicalName))
             {
                 return null;
             }
 
             var friendlyName = GetFriendlyName(upstreamBranchCanonicalName);
-            return gitRepository.GetCompareUrl(friendlyName);
+            return remoteRepository.GetCompareUrl(friendlyName);
         }
 
         static string GetFriendlyName(string canonicalName)

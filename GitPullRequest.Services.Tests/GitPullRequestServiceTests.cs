@@ -25,7 +25,7 @@ public class GitPullRequestServiceTests
                 AddRemoteReferences(repo, remote, new Dictionary<string, string> { { referenceCanonicalName, "refSha" } });
             }
             var target = CreateGitPullRequestService();
-            var gitHubRepositories = target.GetRemoteRepositoryCache(repo);
+            var gitHubRepositories = target.GetRemoteRepositoryCache(repo, e => { });
 
             var compareUrl = target.FindCompareUrl(gitHubRepositories, repo);
 
@@ -40,7 +40,7 @@ public class GitPullRequestServiceTests
         {
             var repo = CreateRepository("sha", null, null, Array.Empty<Remote>());
             var target = CreateGitPullRequestService();
-            var remoteRepositoryCache = target.GetRemoteRepositoryCache(repo);
+            var remoteRepositoryCache = target.GetRemoteRepositoryCache(repo, e => { });
             var upstreamRepositories = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
 
             var prs = target.FindPullRequests(remoteRepositoryCache, upstreamRepositories, repo.Head);
@@ -63,7 +63,7 @@ public class GitPullRequestServiceTests
                     { $"refs/pull/{number}/head", prSha }
                 });
             var target = CreateGitPullRequestService();
-            var remoteRepositoryCache = target.GetRemoteRepositoryCache(repo);
+            var remoteRepositoryCache = target.GetRemoteRepositoryCache(repo, e => { });
             var upstreamRepositories = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
 
             var prs = target.FindPullRequests(remoteRepositoryCache, upstreamRepositories, repo.Head);
@@ -88,9 +88,10 @@ public class GitPullRequestServiceTests
             AddRemoteReferences(repo, originRemote, new Dictionary<string, string> { { "refs/heads/one", prSha } });
             AddRemoteReferences(repo, upstreamRemote, new Dictionary<string, string> { { $"refs/pull/{number}/head", prSha } });
             var target = CreateGitPullRequestService();
-            var gitHubRepositories = target.GetRemoteRepositoryCache(repo);
+            var gitHubRepositories = target.GetRemoteRepositoryCache(repo, e => { });
             var upstreamRepositories = repo.Network.Remotes
-                .Select(r => gitHubRepositories[r.Name])
+                .Select(r => gitHubRepositories.FindRemoteRepository(r.Name))
+                .Where(r => r != null)
                 .ToList();
 
             var prs = target.FindPullRequests(gitHubRepositories, upstreamRepositories, repo.Head);
@@ -132,7 +133,8 @@ public class GitPullRequestServiceTests
     static IList<RemoteRepository> CreateUpstreamRepositoires(RemoteRepositoryCache remoteRepositoryCache, IRepository repo)
     {
         return repo.Network.Remotes
-            .Select(r => remoteRepositoryCache[r.Name])
+            .Select(r => remoteRepositoryCache.FindRemoteRepository(r.Name))
+            .Where(r => r != null)
             .ToList();
     }
 
