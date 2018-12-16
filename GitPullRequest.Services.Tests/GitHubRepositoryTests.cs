@@ -7,10 +7,13 @@ public class GitHubRepositoryTests
 {
     public class TheUrlProperty
     {
-        [TestCase("https://github.com/jcansdale/git-pr", "https://github.com/jcansdale/git-pr")]
-        [TestCase("https://github.com/jcansdale/git-pr.git", "https://github.com/jcansdale/git-pr")]
-        [TestCase("https://github.com/jcansdale/git-pr.git/", "https://github.com/jcansdale/git-pr")]
-        [TestCase("git@github.com:jcansdale/GitDiffMargin.git", "https://github.com/jcansdale/GitDiffMargin")]
+        [TestCase("https://github.com/owner/repo", "https://github.com/owner/repo")]
+        [TestCase("https://github.com/owner/repo.git", "https://github.com/owner/repo")]
+        [TestCase("https://github.com/owner/repo.git/", "https://github.com/owner/repo")]
+        [TestCase("git://github.com/owner/repo", "https://github.com/owner/repo")]
+        [TestCase("git@github.com:owner/repo.git", "https://github.com/owner/repo")]
+        [TestCase("ssh://git@github.com/owner/repo.git", "https://github.com/owner/repo")]
+        [TestCase("http://github.com/owner/repo", "http://github.com/owner/repo")] // Keeps http
         [TestCase(@"c:\source\repo", "file:///c:/source/repo")]
         public void Url(string remoteUrl, string expectUrl)
         {
