@@ -13,30 +13,19 @@ namespace GitPullRequest.Services
             this.gitService = gitService;
         }
 
-        public IDictionary<string, RemoteRepository> GetGitRepositories(IRepository repo)
+        public RemoteRepositoryCache GetRemoteRepositoryCache(IRepository repo)
         {
-            var gitRepositories = new Dictionary<string, RemoteRepository>();
-            foreach (var remote in repo.Network.Remotes)
-            {
-                var remoteName = remote.Name;
-                var hostedRepository = GitRepositoryFactory.Create(gitService, repo, remote.Name);
-                if (hostedRepository != null)
-                {
-                    gitRepositories[remoteName] = hostedRepository;
-                }
-            }
-
-            return gitRepositories;
+            return new RemoteRepositoryCache(gitService, repo);
         }
 
         public IList<(RemoteRepository Repository, int Number, bool IsDeleted)> FindPullRequests(
-            IDictionary<string, RemoteRepository> gitRepositories, Branch branch)
+            RemoteRepositoryCache remoteRepositoryCache, IList<RemoteRepository> upstreamRepositories, Branch branch)
         {
             var isDeleted = false;
             string sha = null;
             if (branch.IsTracking || branch.IsRemote)
             {
-                var gitRepository = gitRepositories[branch.RemoteName];
+                var gitRepository = remoteRepositoryCache[branch.RemoteName];
                 var references = gitRepository.References;
                 isDeleted = !references.TryGetValue(branch.UpstreamBranchCanonicalName, out sha);
             }
@@ -46,28 +35,21 @@ namespace GitPullRequest.Services
                 sha = branch.Tip.Sha;
             }
 
-            return FindPullRequestsForSha(gitRepositories, sha)
+            return FindPullRequestsForSha(remoteRepositoryCache, upstreamRepositories, sha)
                 .Select(pr => (pr.Repository, pr.Number, isDeleted)).ToList();
         }
 
         public IList<(RemoteRepository Repository, int Number)> FindPullRequestsForSha(
-            IDictionary<string, RemoteRepository> gitRepositories, string sha)
+            RemoteRepositoryCache remoteRepositoryCache, ICollection<RemoteRepository> upstreamRepositories, string sha)
         {
-            // Only consider one repository per URL and prioritize ones with a remote named "origin"
-            var uniqueRepositories = gitRepositories.Values
-                .GroupBy(r => r.Url)
-                .Select(g => g
-                    .OrderBy(r => r.RemoteName == "origin" ? 0 : 1)
-                    .First());
-
-            return uniqueRepositories
+            return upstreamRepositories
                 .SelectMany(r => r.References, (x, y) => (Repository: x, Reference: y))
                 .Where(kv => kv.Reference.Value == sha).Select(kv => (kv.Repository, Number: kv.Repository.FindPullRequestForCanonicalName(kv.Reference.Key)))
                 .Where(pr => pr.Number != -1)
                 .ToList();
         }
 
-        public string FindCompareUrl(IDictionary<string, RemoteRepository> gitRepositories, IRepository repo)
+        public string FindCompareUrl(RemoteRepositoryCache remoteRepositoryCache, IRepository repo)
         {
             var branch = repo.Head;
             if (!branch.IsTracking)
@@ -76,7 +58,7 @@ namespace GitPullRequest.Services
             }
 
             var upstreamBranchCanonicalName = branch.UpstreamBranchCanonicalName;
-            var gitRepository = gitRepositories[branch.RemoteName];
+            var gitRepository = remoteRepositoryCache[branch.RemoteName];
             if (!gitRepository.References.ContainsKey(upstreamBranchCanonicalName))
             {
                 return null;
