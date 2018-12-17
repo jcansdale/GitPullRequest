@@ -6,44 +6,17 @@ namespace GitPullRequest.Services
 {
     public class RemoteRepositoryFactory
     {
-        readonly IGitService libGitService;
-        readonly IGitService shellGitService;
-        readonly bool shell;
+        readonly IGitService gitService;
 
-        /// <summary>
-        /// The default <see cref="IGitService"/> implementation or null for automatic.
-        /// </summary>
-        /// <param name="defaultGitService"></param>
-        public RemoteRepositoryFactory(
-            IGitService libGitService,
-            IGitService shellGitService,
-            bool shell = false)
+        public RemoteRepositoryFactory(IGitService gitService)
         {
-            this.libGitService = libGitService;
-            this.shellGitService = shellGitService;
-            this.shell = shell;
+            this.gitService = gitService;
         }
 
         public RemoteRepository Create(IRepository repo, string remoteName)
         {
-            var gitService = shell ? shellGitService : libGitService;
-
             var url = repo.Network.Remotes[remoteName].Url;
-
             var uriString = new UriString(url);
-            if (!uriString.IsHypertextTransferProtocol && !uriString.IsFileUri)
-            {
-                // LibGit2Sharp only works with HTTP and file remotes
-                gitService = shellGitService;
-            }
-
-            if (Uri.TryCreate(url, UriKind.Absolute, out Uri uri) &&
-                uri.GetLeftPart(UriPartial.Authority).Contains("@"))
-            {
-                // LibGit2Sharp doesn't appear to work when a user is specified
-                gitService = shellGitService;
-            }
-
             if (uriString.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
             {
                 return new GitHubRepository(gitService, repo, remoteName);

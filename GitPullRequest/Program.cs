@@ -45,7 +45,8 @@ namespace GitPullRequest
             }
 
             Action<Exception> exceptionLogger = e => Console.WriteLine(e);
-            var factory = new RemoteRepositoryFactory(new LibGitService(), new ShellGitService(), Shell);
+            var gitService = new DynamicGitService(new LibGitService(), new ShellGitService(), Shell);
+            var factory = new RemoteRepositoryFactory(gitService);
             var service = new GitPullRequestService(factory);
             using (var repo = new Repository(repoPath))
             {
