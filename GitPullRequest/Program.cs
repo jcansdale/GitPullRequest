@@ -44,13 +44,14 @@ namespace GitPullRequest
                 return;
             }
 
-            var gitService = Shell ? new ShellGitService() : new LibGitService() as IGitService;
-            var service = new GitPullRequestService(gitService);
+            Action<Exception> exceptionLogger = e => Console.WriteLine(e);
+            var factory = new RemoteRepositoryFactory(new LibGitService(), new ShellGitService(), Shell);
+            var service = new GitPullRequestService(factory);
             using (var repo = new Repository(repoPath))
             {
                 if (Prune)
                 {
-                    PruneBranches(service, repo);
+                    PruneBranches(service, repo, exceptionLogger);
                     return;
                 }
 
@@ -58,11 +59,11 @@ namespace GitPullRequest
                 {
                     if (List || Remote != null)
                     {
-                        ListBranches(service, repo, Remote);
+                        ListBranches(service, repo, Remote, exceptionLogger);
                         return;
                     }
 
-                    BrowsePullRequest(service, repo);
+                    BrowsePullRequest(service, repo, exceptionLogger);
                 }
                 catch (LibGit2SharpException e)
                 {
@@ -72,9 +73,9 @@ namespace GitPullRequest
             }
         }
 
-        void BrowsePullRequest(GitPullRequestService service, Repository repo)
+        void BrowsePullRequest(GitPullRequestService service, Repository repo, Action<Exception> exceptionLogger)
         {
-            var remoteRepositoryCache = service.GetRemoteRepositoryCache(repo);
+            var remoteRepositoryCache = service.GetRemoteRepositoryCache(repo, exceptionLogger);
             var upstreamRepositoires = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
 
             var prs = (PullRequestNumber == 0 ? service.FindPullRequests(remoteRepositoryCache, upstreamRepositoires, repo.Head) :
@@ -112,9 +113,9 @@ namespace GitPullRequest
             Console.WriteLine("Couldn't find pull request or remote branch");
         }
 
-        void ListBranches(GitPullRequestService service, Repository repo, string remoteName)
+        void ListBranches(GitPullRequestService service, Repository repo, string remoteName, Action<Exception> exceptionLogger)
         {
-            var remoteRepositoryCache = service.GetRemoteRepositoryCache(repo);
+            var remoteRepositoryCache = service.GetRemoteRepositoryCache(repo, exceptionLogger);
             var upstreamRepositoires = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
 
             var prs = repo.Branches
@@ -162,9 +163,9 @@ namespace GitPullRequest
             }
         }
 
-        void PruneBranches(GitPullRequestService service, Repository repo)
+        void PruneBranches(GitPullRequestService service, Repository repo, Action<Exception> exceptionLogger)
         {
-            var remoteRepositoryCache = service.GetRemoteRepositoryCache(repo);
+            var remoteRepositoryCache = service.GetRemoteRepositoryCache(repo, exceptionLogger);
             var upstreamRepositoires = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
 
             var prs = repo.Branches
@@ -200,7 +201,8 @@ namespace GitPullRequest
         {
             // Only consider one repository per URL and prioritize ones with a remote named "origin"
             return repo.Network.Remotes
-                .Select(r => remoteRepositoryCache[r.Name])
+                .Select(r => remoteRepositoryCache.FindRemoteRepository(r.Name))
+                .Where(r => r != null)
                 .GroupBy(r => r.Url)
                 .Select(g => g
                     .OrderBy(r => r.RemoteName == "origin" ? 0 : 1)

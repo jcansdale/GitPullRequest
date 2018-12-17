@@ -1,37 +1,50 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using LibGit2Sharp;
 
 namespace GitPullRequest.Services
 {
     public class RemoteRepositoryCache
     {
-        readonly IGitService gitService;
-        readonly IRepository repo;
-        readonly Dictionary<string, RemoteRepository> cache;
+        readonly Dictionary<string, RemoteRepository> cache = new Dictionary<string, RemoteRepository>();
 
-        public RemoteRepositoryCache(IGitService gitService, IRepository repo)
+        readonly RemoteRepositoryFactory remoteRepositoryFactory;
+        readonly IRepository repo;
+        readonly Action<Exception> exceptionLogger;
+
+        public RemoteRepositoryCache(
+            RemoteRepositoryFactory remoteRepositoryFactory,
+            IRepository repo,
+            Action<Exception> exceptionLogger)
         {
-            this.gitService = gitService;
+            this.remoteRepositoryFactory = remoteRepositoryFactory;
             this.repo = repo;
-            cache = new Dictionary<string, RemoteRepository>();
+            this.exceptionLogger = exceptionLogger;
         }
 
-        public RemoteRepository this[string remoteName]
+        public RemoteRepository FindRemoteRepository(string remoteName)
         {
-            get
+            if (!cache.ContainsKey(remoteName))
             {
-                if (!cache.ContainsKey(remoteName))
-                {
-                    var remoteRepository = GitRepositoryFactory.Create(gitService, repo, remoteName);
-                    if (remoteRepository != null)
-                    {
-                        cache[remoteName] = remoteRepository;
-                    }
+                TryCreateRemoteRepository(remoteName, out RemoteRepository remoteRepository);
+                cache[remoteName] = remoteRepository;
+            }
 
-                    cache[remoteName] = remoteRepository;
-                }
+            return cache[remoteName];
+        }
 
-                return cache[remoteName];
+        bool TryCreateRemoteRepository(string remoteName, out RemoteRepository remoteRepository)
+        {
+            try
+            {
+                remoteRepository = remoteRepositoryFactory.Create(repo, remoteName);
+                return true;
+            }
+            catch (Exception e)
+            {
+                exceptionLogger(e);
+                remoteRepository = null;
+                return false;
             }
         }
     }
