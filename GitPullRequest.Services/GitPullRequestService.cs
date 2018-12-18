@@ -38,7 +38,13 @@ namespace GitPullRequest.Services
 
             if (sha == null)
             {
-                sha = branch.Tip.Sha;
+                var tip = branch.Tip;
+                if (tip == null)
+                {
+                    return Array.Empty<(RemoteRepository, int, bool)>();
+                }
+
+                sha = tip.Sha;
             }
 
             return FindPullRequestsForSha(remoteRepositoryCache, upstreamRepositories, sha)
