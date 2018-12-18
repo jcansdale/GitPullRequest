@@ -45,9 +45,10 @@ namespace GitPullRequest
             }
 
             Action<Exception> exceptionLogger = e => Console.WriteLine(e);
+            Action<string> warningLogger = s => Console.WriteLine($"WARNING: {s}");
             var gitService = new DynamicGitService(new LibGitService(), new ShellGitService(), Shell);
             var factory = new RemoteRepositoryFactory(gitService);
-            var service = new GitPullRequestService(factory);
+            var service = new GitPullRequestService(factory, warningLogger);
             using (var repo = new Repository(repoPath))
             {
                 if (Prune)

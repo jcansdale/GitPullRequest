@@ -122,7 +122,7 @@ public class GitPullRequestServiceTests
     {
         var gitService = new LibGitService();
         var factory = new RemoteRepositoryFactory(gitService);
-        return new GitPullRequestService(factory);
+        return new GitPullRequestService(factory, s => { });
     }
 
     static IRepository CreateRepository(

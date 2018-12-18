@@ -7,11 +7,13 @@ namespace GitPullRequest.Services
 {
     public class GitPullRequestService
     {
+        readonly Action<string> warningLogger;
         readonly RemoteRepositoryFactory remoteRepositoryFactory;
 
-        public GitPullRequestService(RemoteRepositoryFactory remoteRepositoryFactory)
+        public GitPullRequestService(RemoteRepositoryFactory remoteRepositoryFactory, Action<string> warningLogger)
         {
             this.remoteRepositoryFactory = remoteRepositoryFactory;
+            this.warningLogger = warningLogger;
         }
 
         public RemoteRepositoryCache GetRemoteRepositoryCache(IRepository repo, Action<Exception> exceptionLogger)
@@ -41,6 +43,7 @@ namespace GitPullRequest.Services
                 var tip = branch.Tip;
                 if (tip == null)
                 {
+                    warningLogger?.Invoke($"Tip of branch {branch.CanonicalName} was null");
                     return Array.Empty<(RemoteRepository, int, bool)>();
                 }
 
