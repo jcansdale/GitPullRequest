@@ -48,6 +48,21 @@ public class GitPullRequestServiceTests
             Assert.That(prs, Is.Empty);
         }
 
+        [Test]
+        public void Branch_Tip_Null_No_Pull_Request()
+        {
+            var repo = CreateRepository("sha", null, null, Array.Empty<Remote>());
+            var target = CreateGitPullRequestService();
+            var remoteRepositoryCache = target.GetRemoteRepositoryCache(repo, e => { });
+            var upstreamRepositories = CreateUpstreamRepositoires(remoteRepositoryCache, repo);
+            var branch = Substitute.For<Branch>();
+            branch.Tip.Returns(null as Commit);
+
+            var prs = target.FindPullRequests(remoteRepositoryCache, upstreamRepositories, branch);
+
+            Assert.That(prs, Is.Empty);
+        }
+
         [TestCase("headSha", "prSha")]
         [TestCase("sameHeadAndPrSha", "sameHeadAndPrSha")]
         public void Live_Pull_Request(string headSha, string prSha)
@@ -107,7 +122,7 @@ public class GitPullRequestServiceTests
     {
         var gitService = new LibGitService();
         var factory = new RemoteRepositoryFactory(gitService);
-        return new GitPullRequestService(factory);
+        return new GitPullRequestService(factory, s => { });
     }
 
     static IRepository CreateRepository(
